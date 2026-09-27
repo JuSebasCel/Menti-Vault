@@ -293,12 +293,25 @@ export function VistaPreviaDeDocx({
     ventana.
   */
   const hoja = (
-    <div
-      ref={contenedorRef}
-      className={`vista-previa-docx overflow-auto bg-fondo p-4 ${
-        conZoom ? 'h-full rounded-2xl' : 'elevacion max-h-[70vh] rounded-sm border border-filete'
-      }`}
-    />
+    <div className={conZoom ? 'relative h-full' : 'relative'}>
+      <div
+        ref={contenedorRef}
+        className={`vista-previa-docx overflow-auto bg-fondo p-4 ${
+          conZoom ? 'h-full rounded-2xl' : 'elevacion max-h-[70vh] rounded-sm border border-filete'
+        }`}
+      />
+
+      {/*
+        Mientras `docx-preview` construye el documento —unos 150 ms— su caja
+        está vacía. Medido al abrir una memoria: el hueco de la pantalla
+        desaparecía a los 840 ms y la hoja no llegaba hasta los 979, y ese
+        pestañeo se veía. El papel en blanco ocupa ese hueco, encima y con el
+        mismo sitio, así que el documento aparece sobre él sin saltos.
+      */}
+      {pintada ? null : (
+        <div className="barrido-de-carga pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-papel" />
+      )}
+    </div>
   )
 
   if (!conZoom) {
