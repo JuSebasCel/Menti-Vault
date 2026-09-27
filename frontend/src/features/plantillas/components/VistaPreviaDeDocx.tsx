@@ -212,6 +212,17 @@ export function VistaPreviaDeDocx({
   alPulsarCampo,
 }: PropsVistaPreviaDeDocx): ReactElement | null {
   const contenedorRef = useRef<HTMLDivElement>(null)
+  /*
+    Los campos pulsables viajan por `ref` y no como dependencias del efecto.
+
+    Pintar el documento es tirar el HTML anterior y volver a construirlo, y el
+    efecto se rehacía cada vez que cambiaba la identidad de `idsDeCampos` o de
+    `alPulsarCampo` —dos valores que se crean nuevos en cada render de quien
+    llama—. Medido en la app: la hoja se pintaba, se borraba y se volvía a
+    pintar tres veces en el primer segundo. Eso era el parpadeo.
+  */
+  const campos = useRef({ ids: idsDeCampos, alPulsar: alPulsarCampo })
+  campos.current = { ids: idsDeCampos, alPulsar: alPulsarCampo }
   const [fallo, setFallo] = useState(false)
   const [pintada, setPintada] = useState(false)
   /* 16 px de aire: el `p-4` del contenedor, que `clientWidth` cuenta como espacio disponible. */
@@ -242,11 +253,12 @@ export function VistaPreviaDeDocx({
         setPintada(true)
         if (resaltarMarcadores) {
           const rangos = marcadoresEn(contenedor)
-          dibujarPildoras(contenedor, rangos, idsDeCampos, alPulsarCampo)
+          const pintar = (): void =>
+            dibujarPildoras(contenedor, rangos, campos.current.ids, campos.current.alPulsar)
+
+          pintar()
           /* Con las fuentes de Word ya cargadas el texto se mueve: se vuelven a medir. */
-          void document.fonts?.ready.then(() =>
-            dibujarPildoras(contenedor, rangos, idsDeCampos, alPulsarCampo),
-          )
+          void document.fonts?.ready.then(pintar)
         }
       })
       .catch(() => {
@@ -259,7 +271,7 @@ export function VistaPreviaDeDocx({
         CSS.highlights.delete(NOMBRE_DE_LOS_CORCHETES)
       }
     }
-  }, [blob, resaltarMarcadores, idsDeCampos, alPulsarCampo])
+  }, [blob, resaltarMarcadores])
 
   if (blob === null) {
     return null
