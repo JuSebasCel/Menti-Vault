@@ -52,6 +52,9 @@ CodigoError = Literal[
     "MEM_PDF_FALLO",
     # Plantillas: proponer que va en cada campo.
     "PLANT_SIN_CAMPOS",
+    # Material de apoyo: diapositivas y documentos de una charla.
+    "MATERIAL_NO_ENCONTRADO",
+    "MATERIAL_SIN_TEXTO",
     # Agente conversacional sobre el catálogo.
     "CHAT_MENSAJE_VACIO",
     "CHAT_CONVERSACION_NO_ENCONTRADA",
@@ -63,6 +66,11 @@ CodigoError = Literal[
 ]
 
 _MENSAJES: Final[dict[str, str]] = {
+    "MATERIAL_NO_ENCONTRADO": "No se encontro esa imagen entre el material de apoyo de la conferencia.",
+    "MATERIAL_SIN_TEXTO": (
+        "No se pudo leer texto en esa imagen. Puede que no tenga texto legible, que pese demasiado "
+        "o que el modelo con vision configurado ya no exista."
+    ),
     "PLANT_SIN_CAMPOS": (
         "Esta plantilla no tiene ningun campo que configurar. Marcalos en Word con "
         "[[Nombre]] y vuelve a subirla."
@@ -190,6 +198,8 @@ _ESTADOS_HTTP: Final[dict[str, int]] = {
     "CHAT_MENSAJE_VACIO": 422,
     "MEM_SIN_HUECOS": 422,
     "PLANT_SIN_CAMPOS": 422,
+    "MATERIAL_NO_ENCONTRADO": 404,
+    "MATERIAL_SIN_TEXTO": 422,
     "MEM_DOCX_VACIO": 422,
     "MEM_DOCX_DEMASIADO_GRANDE": 413,
     "MEM_PDF_SIN_CONVERSOR": 503,

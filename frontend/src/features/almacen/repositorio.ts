@@ -1,3 +1,4 @@
+import { hayBackend, pedirAlBackend } from '@/shared/api/backend'
 import { supabase } from '@/shared/supabase/cliente'
 import type { ResultadoDeConsulta } from '@/shared/supabase/consultas'
 
@@ -134,4 +135,27 @@ export async function direccionDe(ruta: string): Promise<string | null> {
 export async function descargar(ruta: string): Promise<Blob | null> {
   const { data } = await supabase.storage.from(BUCKET).download(ruta)
   return data ?? null
+}
+
+export function sePuedeLeerConIa(): boolean {
+  return hayBackend()
+}
+
+/*
+  Lo que un modelo con visión lee en una imagen de apoyo.
+
+  Existe para poder COMPROBAR la lectura: la automática ocurre al escribir una
+  memoria y, si falla, lo único que se ve es una memoria con huecos. Aquí se
+  pide una imagen concreta y vuelve su texto, o el motivo por el que no.
+*/
+export async function leerImagenConIa(
+  idConferencia: string,
+  nombre: string,
+): Promise<ResultadoDeConsulta<string>> {
+  const resultado = await pedirAlBackend<{ texto: string }>('/material/leer-imagen', {
+    id_conferencia: idConferencia,
+    nombre,
+  })
+
+  return resultado.ok ? { ok: true, datos: resultado.datos.texto } : resultado
 }

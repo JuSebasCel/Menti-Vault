@@ -33,12 +33,12 @@ registro = logging.getLogger("bitacora.memorias.vision")
 EXTENSIONES_DE_IMAGEN = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
 """
-Tope por imagen. Groq rechaza las peticiones con imágenes de más de 4 MB en
-base64, y una captura de diapositiva pesa muy por debajo de eso; una foto de
-teléfono a máxima resolución, no. La que se pase se salta con un aviso, en
-vez de gastar la petición para que la rechacen.
+Tope por imagen. Groq rechaza la petición entera por encima de 20 MB, y el
+base64 engorda los bytes un tercio: 12 MB de imagen son unos 16 MB de
+petición, que aún entran. La que se pase se salta con un aviso, en vez de
+gastar la petición para que la rechacen.
 """
-BYTES_MAXIMOS_POR_IMAGEN = 3 * 1024 * 1024
+BYTES_MAXIMOS_POR_IMAGEN = 12 * 1024 * 1024
 
 """Tope de imágenes por memoria: son una llamada cada una, y una charla no tiene cincuenta láminas clave."""
 MAXIMO_DE_IMAGENES = 12

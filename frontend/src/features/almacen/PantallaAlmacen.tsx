@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { mensajeDeError } from '@/shared/errors'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactElement } from 'react'
 import { useSession } from '@/features/auth/session'
@@ -7,7 +8,15 @@ import type { Conferencia } from '@/features/conferencias/data'
 import { formatearFecha, formatearTimestamp } from '@/features/conferencias/data'
 import { VistaPreviaDeDocx } from '@/features/plantillas/components/VistaPreviaDeDocx'
 import { EstadoVacioIlustrado, Esqueleto } from '@/shared/ui'
-import { EXTENSIONES_DE_APOYO, descargar, direccionDe, listarArchivos, subirMaterialDeApoyo } from './repositorio'
+import {
+  EXTENSIONES_DE_APOYO,
+  descargar,
+  direccionDe,
+  leerImagenConIa,
+  listarArchivos,
+  sePuedeLeerConIa,
+  subirMaterialDeApoyo,
+} from './repositorio'
 import type { ArchivoDelAlmacen, TipoDeArchivo } from './repositorio'
 
 /*
@@ -302,7 +311,12 @@ function ContenidoDeCarpeta({ conferencia }: { conferencia: Conferencia }): Reac
 
           <AnimatePresence mode="wait" initial={false}>
             {abierto === null ? null : (
-              <VisorDeArchivo key={abierto.ruta} archivo={abierto} tiemposEstimados={conferencia.tiemposEstimados === true} />
+              <VisorDeArchivo
+                key={abierto.ruta}
+                archivo={abierto}
+                idConferencia={conferencia.id}
+                tiemposEstimados={conferencia.tiemposEstimados === true}
+              />
             )}
           </AnimatePresence>
         </>
@@ -316,9 +330,11 @@ type Segmento = { readonly inicio: number; readonly texto: string; readonly habl
 function VisorDeArchivo({
   archivo,
   tiemposEstimados,
+  idConferencia,
 }: {
   archivo: ArchivoDelAlmacen
   tiemposEstimados: boolean
+  idConferencia: string
 }): ReactElement {
   const reducirMovimiento = useReducedMotion()
   const [direccion, setDireccion] = useState<string | null>(null)
@@ -326,6 +342,19 @@ function VisorDeArchivo({
   const [segmentos, setSegmentos] = useState<readonly Segmento[] | null>(null)
   const [blob, setBlob] = useState<Blob | null>(null)
   const [fallo, setFallo] = useState(false)
+  const [leyendo, setLeyendo] = useState(false)
+  const [textoLeido, setTextoLeido] = useState<string | null>(null)
+
+  async function leerTexto(): Promise<void> {
+    if (leyendo) {
+      return
+    }
+
+    setLeyendo(true)
+    const resultado = await leerImagenConIa(idConferencia, archivo.nombre)
+    setLeyendo(false)
+    setTextoLeido(resultado.ok ? resultado.datos : mensajeDeError(resultado.codigo))
+  }
 
   useEffect(() => {
     let vivo = true
@@ -398,7 +427,37 @@ function VisorDeArchivo({
         )
       ) : archivo.tipo === 'imagen' ? (
         direccion === null ? null : (
-          <img src={direccion} alt={archivo.nombre} className="max-h-[70vh] w-fit rounded-[24px] bg-fondo" />
+          <div className="flex flex-col gap-3">
+            <img src={direccion} alt={archivo.nombre} className="max-h-[60vh] w-fit rounded-[24px] bg-fondo" />
+
+            {/*
+              Leer la imagen a mano. Es lo mismo que hace la memoria por
+              dentro, pero a la vista: si el modelo con visión no está bien
+              configurado, aquí se dice, en vez de aparecer como una memoria
+              con huecos y ninguna explicación.
+            */}
+            {sePuedeLeerConIa() ? (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={leyendo}
+                  onClick={() => void leerTexto()}
+                  className="flex h-10 w-fit cursor-pointer items-center gap-2 rounded-full bg-acento-tenue px-4 text-sm text-texto transition-colors hover:bg-ilustracion disabled:cursor-default disabled:opacity-60"
+                >
+                  <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-lg">
+                    document_scanner
+                  </span>
+                  {leyendo ? 'Leyendo la imagen…' : 'Leer su texto con IA'}
+                </button>
+
+                {textoLeido === null ? null : (
+                  <p className="max-h-72 overflow-y-auto rounded-[20px] bg-fondo p-5 text-sm leading-relaxed whitespace-pre-wrap text-texto">
+                    {textoLeido}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
         )
       ) : archivo.tipo === 'pdf' ? (
         direccion === null ? null : (

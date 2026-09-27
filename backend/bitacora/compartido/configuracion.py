@@ -56,10 +56,15 @@ MODELOS_GROQ_CHAT_POR_DEFECTO = "openai/gpt-oss-20b,openai/gpt-oss-120b,llama-3.
 Los que aceptan imágenes: leen el texto de una diapositiva adjuntada como
 foto o captura (`memorias/vision.py`). Los de fichas y chat no lo hacen, y
 pedírselo devuelve un error del proveedor, no una respuesta peor.
+
+Estos nombres caducan. Los primeros que se pusieron aquí —los Llama 4 de
+abril de 2026— ya no estaban en el catálogo de Groq unos meses después, y
+como un modelo inexistente falla igual que una imagen ilegible, las
+diapositivas dejaron de leerse sin que nadie se enterara. Si vuelve a pasar,
+se cambia con `BITACORA_MODELOS_GROQ_VISION` sin tocar el código, y la
+lectura a mano desde el Almacén dice el motivo en vez de callarlo.
 """
-MODELOS_GROQ_VISION_POR_DEFECTO = (
-    "meta-llama/llama-4-scout-17b-16e-instruct,meta-llama/llama-4-maverick-17b-128e-instruct"
-)
+MODELOS_GROQ_VISION_POR_DEFECTO = "qwen/qwen3.8-27b,qwen/qwen3.6-27b"
 
 """Con una clave de OpenAI, el modelo con visión más barato de su catálogo."""
 MODELO_DE_VISION_DE_OPENAI = "gpt-4o-mini"
