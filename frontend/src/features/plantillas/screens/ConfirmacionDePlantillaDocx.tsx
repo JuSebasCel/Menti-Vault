@@ -5,6 +5,8 @@ import {
   proponerInstrucciones,
   sePuedenProponerInstrucciones,
 } from '../instrucciones'
+import { TIPOS_DE_CAMPO, ajustesDelTipo } from '../tiposDeCampo'
+import type { TipoDeCampo } from '../tiposDeCampo'
 import { PRESETS_DE_TONO, TONO_POR_DEFECTO } from '../tono'
 import type { TonoDePlantilla } from '../tono'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -534,6 +536,43 @@ function CampoConfigurable({
             )}
           </p>
 
+          {/*
+            Primero QUÉ va aquí, elegido de una lista. Escribir una
+            instrucción en blanco por cada uno de quince campos es donde se
+            abandonaba una plantilla; elegir "La tesis del ponente" la escribe
+            sola, junto con el tipo de texto, el formato y la extensión. Sigue
+            editándose a mano: lo que manda es la instrucción.
+          */}
+          <SelectorDeOpciones
+            completo
+            rotulo="Qué va aquí"
+            icono="category"
+            etiquetaAccesible="Qué va en este campo"
+            vacio="Elige qué va aquí"
+            valor={(marcador.tipoDeCampo ?? '') as TipoDeCampo}
+            opciones={TIPOS_DE_CAMPO.map((tipo) => ({
+              valor: tipo.valor,
+              etiqueta: tipo.etiqueta,
+              icono: tipo.icono,
+            }))}
+            alCambiar={(tipo) => {
+              const ajustes = ajustesDelTipo(tipo)
+              alCambiar({
+                tipoDeCampo: tipo,
+                /* "Lo escribo yo" no borra lo que ya había escrito: solo deja de sugerir. */
+                ...(tipo === 'propio' ? {} : ajustes),
+                ...(tipo === 'lista' ? {} : { opciones: [] }),
+              })
+            }}
+          />
+
+          {marcador.tipoDeCampo === 'lista' ? (
+            <EditorDeOpciones
+              opciones={marcador.opciones ?? []}
+              alCambiar={(opciones) => alCambiar({ opciones })}
+            />
+          ) : null}
+
           <textarea
             value={marcador.instruccion ?? ''}
             onChange={(evento) => alCambiar({ instruccion: evento.target.value })}
@@ -757,5 +796,95 @@ function PanelSobreLaHoja({
       {children}
     </div>,
     document.body,
+  )
+}
+
+/*
+  Las respuestas admitidas de un campo de lista cerrada.
+
+  La IA no redacta aquí: escoge una de estas, copiada igual. Es para los
+  campos donde una palabra distinta rompe el documento —"Modalidad:
+  conferencia / taller / panel"—, y por eso las opciones viajan al backend en
+  vez de quedarse como una frase dentro de la instrucción, que el modelo
+  puede interpretar a su manera.
+
+  Sin `<form>`: esto vive dentro del formulario de la plantilla, y un form
+  dentro de otro dispara una submisión nativa que recarga la app.
+*/
+function EditorDeOpciones({
+  opciones,
+  alCambiar,
+}: {
+  opciones: readonly string[]
+  alCambiar: (opciones: readonly string[]) => void
+}): ReactElement {
+  const [nueva, setNueva] = useState('')
+
+  function agregar(): void {
+    const limpia = nueva.trim()
+
+    if (limpia === '' || opciones.includes(limpia)) {
+      setNueva('')
+      return
+    }
+
+    alCambiar([...opciones, limpia])
+    setNueva('')
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-[20px] bg-acento-tenue p-3">
+      <p className="px-1 text-xs text-texto-tenue">Opciones entre las que puede elegir</p>
+
+      {opciones.length === 0 ? null : (
+        <div className="flex flex-wrap gap-1.5">
+          {opciones.map((opcion) => (
+            <span
+              key={opcion}
+              className="flex items-center gap-1 rounded-full bg-fondo py-1 pr-1 pl-3 text-sm text-texto"
+            >
+              {opcion}
+              <button
+                type="button"
+                onClick={() => alCambiar(opciones.filter((candidata) => candidata !== opcion))}
+                aria-label={`Quitar ${opcion}`}
+                className="flex size-6 cursor-pointer items-center justify-center rounded-full text-texto-tenue transition-colors hover:text-texto"
+              >
+                <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-base">
+                  close
+                </span>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-1.5">
+        <input
+          value={nueva}
+          onChange={(cambio) => setNueva(cambio.target.value)}
+          onKeyDown={(tecla) => {
+            if (tecla.key === 'Enter') {
+              tecla.preventDefault()
+              agregar()
+            }
+          }}
+          placeholder="Conferencia, taller, panel…"
+          aria-label="Opción nueva"
+          className="h-10 min-w-0 flex-1 rounded-full bg-fondo px-3 text-sm text-texto placeholder:text-texto-tenue focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={agregar}
+          disabled={nueva.trim() === ''}
+          aria-label="Añadir la opción"
+          className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-acento text-acento-contraste transition-opacity disabled:cursor-default disabled:opacity-40"
+        >
+          <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-lg">
+            add
+          </span>
+        </button>
+      </div>
+    </div>
   )
 }

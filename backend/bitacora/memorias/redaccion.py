@@ -43,6 +43,12 @@ class Hueco:
     """`cita`: copiar un fragmento literal, sin tocarlo. `redactar`: escribir con palabras propias."""
     modo: Modo = "redactar"
     extension: Extension = "media"
+    """
+    Las únicas respuestas admitidas. Vacío, la IA redacta libremente; con
+    opciones, escoge una de ellas y no escribe nada más: hay campos —una
+    modalidad, un estado— donde una palabra distinta rompe el documento.
+    """
+    opciones: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -103,7 +109,11 @@ plantilla.
 6. Respeta la `extension`: `breve` es una o dos frases; `media`, un párrafo; \
 `extensa`, entre dos y cuatro párrafos. El hueco tiene un sitio fijo en la \
 hoja, y pasarse lo desborda.
-7. Si el `modo` es `cita`, NO redactes: copia palabra por palabra el `literal` \
+7. Si el hueco trae `opciones`, NO redactes: devuelve UNA de ellas, copiada \
+carácter por carácter, la que corresponda a lo que dice el material. Si \
+ninguna corresponde, `null`. Nunca inventes una opción que no esté en la \
+lista ni devuelvas dos.
+8. Si el `modo` es `cita`, NO redactes: copia palabra por palabra el `literal` \
 de la ficha que mejor responda a la instrucción, sin cambiar, añadir ni \
 quitar una sola palabra, y sin comillas. Si ninguna encaja, `null`. En modo \
 `cita` no aplican ni la extensión ni el formato: una cita mide lo que mide.
@@ -166,6 +176,7 @@ def redactor_de(cliente: ClienteDeOpenAI, modelo: str) -> Redactor:
                     "formato": hueco.formato,
                     "modo": hueco.modo,
                     "extension": hueco.extension,
+                    "opciones": list(hueco.opciones),
                     "extractos": list((extractos or {}).get(hueco.id, ())),
                 }
                 for hueco in huecos

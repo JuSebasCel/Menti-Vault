@@ -48,6 +48,8 @@ class HuecoPedido(BaseModel):
     formato: Literal["parrafo", "lista_vinetas", "lista_numerada"] = "parrafo"
     modo: Literal["redactar", "cita"] = "redactar"
     extension: Literal["breve", "media", "extensa"] = "media"
+    """Las únicas respuestas admitidas para este hueco. Vacío = la IA redacta libremente."""
+    opciones: list[str] = Field(default_factory=list, max_length=30)
 
 
 class PedidoDeRedaccion(BaseModel):
@@ -86,6 +88,7 @@ def redactar(cuerpo: PedidoDeRedaccion, usuario: Usuario) -> RespuestaDeRedaccio
             formato=hueco.formato,
             modo=hueco.modo,
             extension=hueco.extension,
+            opciones=tuple(opcion.strip() for opcion in hueco.opciones if opcion.strip()),
         )
         for hueco in cuerpo.huecos
     ]

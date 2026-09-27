@@ -73,6 +73,18 @@ export type MarcadorSimpleDeDocx = {
   readonly modo?: ModoDeCampo
   /** Cuánto debe ocupar lo redactado. Sin valor, `media`. No aplica a una cita, que mide lo que mide. */
   readonly extension?: ExtensionDeCampo
+  /**
+   * De qué lista salió la configuración de este campo (ver `tiposDeCampo.ts`).
+   * Solo sirve para enseñar en la interfaz de dónde vino: lo que manda es la
+   * instrucción, que después se edita libremente.
+   */
+  readonly tipoDeCampo?: string
+  /**
+   * Las únicas respuestas admitidas. Con esto, la IA no redacta: escoge una
+   * de estas, copiada igual. Para campos como "Modalidad: conferencia /
+   * taller / panel", donde una palabra distinta rompe el documento.
+   */
+  readonly opciones?: readonly string[]
 }
 
 /**

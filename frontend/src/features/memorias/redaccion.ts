@@ -25,6 +25,8 @@ export type HuecoParaRedactar = {
   readonly formato: FormatoDeMarcador
   readonly modo: ModoDeCampo
   readonly extension: ExtensionDeCampo
+  /** Si viene, la respuesta tiene que ser una de estas, copiada igual. */
+  readonly opciones?: readonly string[]
 }
 
 /*
@@ -48,6 +50,9 @@ export function huecosDePlantilla(plantilla: Plantilla): readonly HuecoParaRedac
             formato: marcador.modo === 'cita' ? 'parrafo' : marcador.formato,
             modo: marcador.modo ?? 'redactar',
             extension: marcador.extension ?? 'media',
+            ...(marcador.opciones === undefined || marcador.opciones.length === 0
+              ? {}
+              : { opciones: marcador.opciones }),
           },
         ]
       : [],
