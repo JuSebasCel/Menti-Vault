@@ -60,12 +60,17 @@ export type PropsModal = {
    */
   cerrarAlPulsarElVelo?: boolean
   /**
-   * Hacia dónde se abre el modal anclado. Por defecto `izquierda`: su borde
-   * derecho se alinea con el del botón y la ventana crece hacia dentro de la
-   * pantalla. `derecha` la pone a la derecha del botón, para los que viven en
-   * el dock: alineados por la derecha quedaban encima del propio dock.
+   * Hacia dónde se abre el modal anclado.
+   *
+   * - `izquierda` (por defecto): su borde derecho se alinea con el del botón
+   *   y la ventana crece hacia dentro de la pantalla.
+   * - `derecha`: la pone A LA DERECHA del botón, sin taparlo.
+   * - `desde-el-borde`: alinea su borde izquierdo con el del botón, así que
+   *   nace justo encima de él y crece hacia la derecha. Es lo que quieren
+   *   los botones del dock: `izquierda` los mandaba fuera de la pantalla y
+   *   `derecha` los dejaba flotando lejos de lo que se acababa de pulsar.
    */
-  crecerHacia?: 'izquierda' | 'derecha'
+  crecerHacia?: 'izquierda' | 'derecha' | 'desde-el-borde'
   /**
    * Sin cabecera, sin fondo y sin relleno: el contenido es la ventana entera.
    * Para los modales que traen su propia superficie, como el del chat.
@@ -113,7 +118,7 @@ function anclaUtilizable(elemento: HTMLElement | null | undefined): DOMRect | nu
 function situarAnclado(
   ventana: HTMLElement,
   caja: DOMRect,
-  crecerHacia: 'izquierda' | 'derecha',
+  crecerHacia: NonNullable<PropsModal['crecerHacia']>,
   bordeIzquierdo: number,
 ): void {
   ventana.style.position = 'absolute'
@@ -124,10 +129,16 @@ function situarAnclado(
 
   ventana.style.top = `${Math.max(MARGEN, Math.min(caja.top, window.innerHeight - altoVentana - MARGEN))}px`
 
-  if (crecerHacia === 'derecha') {
-    const izquierda = Math.min(caja.right + MARGEN / 2, window.innerWidth - anchoVentana - MARGEN)
+  if (crecerHacia === 'derecha' || crecerHacia === 'desde-el-borde') {
+    const deseada = crecerHacia === 'derecha' ? caja.right + MARGEN / 2 : caja.left
+    const izquierda = Math.min(deseada, window.innerWidth - anchoVentana - MARGEN)
     ventana.style.right = ''
-    ventana.style.left = `${Math.max(bordeIzquierdo, izquierda)}px`
+    /*
+      Con `desde-el-borde` el límite es la pantalla y no el borde de la zona
+      (`bordeIzquierdo`): el botón está DENTRO del dock, así que respetar esa
+      zona lo habría empujado fuera de su propio botón.
+    */
+    ventana.style.left = `${Math.max(MARGEN, crecerHacia === 'derecha' ? Math.max(bordeIzquierdo, izquierda) : izquierda)}px`
   } else {
     const derecha = window.innerWidth - caja.right
     if (window.innerWidth - derecha - anchoVentana < bordeIzquierdo) {

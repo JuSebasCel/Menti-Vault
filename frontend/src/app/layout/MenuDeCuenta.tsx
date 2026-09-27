@@ -127,10 +127,11 @@ export function MenuDeCuenta({
       )}
 
       {/*
-        Hacia la derecha, como todo lo que se abre desde el dock. Alineado por
-        la derecha con su botón —lo que hace un modal anclado por defecto— la
-        ventana nacía dentro del dock y acababa pegada al borde izquierdo de
-        la pantalla, tapada por él.
+        Nace sobre el propio logo: su borde izquierdo se alinea con el del
+        botón y crece hacia la derecha. Alineado por la derecha —lo que hace
+        un modal anclado por defecto— se salía por el borde izquierdo de la
+        pantalla; puesto a la derecha del dock, aparecía lejos de lo que se
+        acababa de pulsar.
       */}
       <Modal
         abierto={abierto}
@@ -139,7 +140,7 @@ export function MenuDeCuenta({
         ancho="angosto"
         anclaje="disparador"
         anclaEn={boton}
-        crecerHacia="derecha"
+        crecerHacia="desde-el-borde"
       >
         <div id={idDelPanel} className="flex flex-col gap-5 pb-1">
           {disparador === 'logo' ? (

@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { mensajeDeError } from '@/shared/errors'
-import { Esqueleto, PanelDeError } from '@/shared/ui'
+import { Esqueleto, PanelDeError, useCrecerDesdeOrigen } from '@/shared/ui'
 import { usePlantillas } from '../usePlantillas'
 import { ConfirmacionDePlantillaDocx } from './ConfirmacionDePlantillaDocx'
 
@@ -45,37 +45,40 @@ export function PantallaEditorDePlantilla(): ReactElement {
   const [borrando, setBorrando] = useState(false)
 
   /*
-    Mientras la lectura no resuelve, "no encontramos esa plantilla" sería
-    literalmente falso: todavía no se buscó.
+    La pantalla crece desde la tarjeta de la que se abrió, y el contenedor que
+    crece es SIEMPRE el mismo: el de la carga, el del error y el de la
+    plantilla ya leída.
+
+    Antes la carga salía por su cuenta y la animación solo arrancaba al llegar
+    la plantilla: se veía el esqueleto a pantalla completa y, encima, la
+    pantalla creciendo desde la tarjeta. Ese era el parpadeo.
   */
-  if (mutadores.cargando) {
-    return <Esqueleto filas={4} etiqueta="Cargando la plantilla" />
-  }
-
-  if (borrando && plantilla === undefined) {
-    return <></>
-  }
-
-  if (mutadores.codigoDeError !== null || plantilla === undefined) {
-    return (
-      <div className="flex flex-col gap-4">
-        <EnlaceDeRegreso />
-        <PanelDeError mensaje={mensajeDeError(mutadores.codigoDeError ?? 'PLANT_NO_ENCONTRADA')} />
-      </div>
-    )
-  }
+  const pantalla = useRef<HTMLDivElement>(null)
+  useCrecerDesdeOrigen(pantalla, idPlantilla)
 
   return (
-    <ConfirmacionDePlantillaDocx
-      plantilla={plantilla}
-      alRenombrar={(nombre) => mutadores.renombrarPlantilla(plantilla.id, nombre)}
-      alCambiarMarcadores={(marcadores) => mutadores.actualizarMarcadoresDeDocx(plantilla.id, marcadores)}
-      alCambiarTono={(tono) => mutadores.cambiarTono(plantilla.id, tono)}
-      alEliminar={async () => {
-        setBorrando(true)
-        await mutadores.eliminar(plantilla.id)
-        void navegar('/plantillas')
-      }}
-    />
+    <div ref={pantalla} className="flex min-h-0 flex-1 flex-col">
+      {mutadores.cargando ? (
+        <Esqueleto filas={4} etiqueta="Cargando la plantilla" />
+      ) : borrando && plantilla === undefined ? null : mutadores.codigoDeError !== null ||
+        plantilla === undefined ? (
+        <div className="flex flex-col gap-4">
+          <EnlaceDeRegreso />
+          <PanelDeError mensaje={mensajeDeError(mutadores.codigoDeError ?? 'PLANT_NO_ENCONTRADA')} />
+        </div>
+      ) : (
+        <ConfirmacionDePlantillaDocx
+          plantilla={plantilla}
+          alRenombrar={(nombre) => mutadores.renombrarPlantilla(plantilla.id, nombre)}
+          alCambiarMarcadores={(marcadores) => mutadores.actualizarMarcadoresDeDocx(plantilla.id, marcadores)}
+          alCambiarTono={(tono) => mutadores.cambiarTono(plantilla.id, tono)}
+          alEliminar={async () => {
+            setBorrando(true)
+            await mutadores.eliminar(plantilla.id)
+            void navegar('/plantillas')
+          }}
+        />
+      )}
+    </div>
   )
 }

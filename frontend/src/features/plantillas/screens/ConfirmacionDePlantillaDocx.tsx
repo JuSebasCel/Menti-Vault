@@ -18,7 +18,6 @@ import {
   ModalDeConfirmacion,
   PanelDeError,
   SelectorDeOpciones,
-  useCrecerDesdeOrigen,
 } from '@/shared/ui'
 import type { OpcionDeSelector } from '@/shared/ui'
 import { VistaPreviaDeDocx } from '../components'
@@ -133,8 +132,6 @@ export function ConfirmacionDePlantillaDocx({
   const [campoEnLaHoja, setCampoEnLaHoja] = useState<{ id: string; caja: DOMRect } | null>(null)
   const [errorDeLaPropuesta, setErrorDeLaPropuesta] = useState<string | null>(null)
   const botonDeBorrado = useRef<HTMLButtonElement>(null)
-  const pantalla = useRef<HTMLDivElement>(null)
-  useCrecerDesdeOrigen(pantalla, plantilla.id)
 
   const campos = plantilla.marcadores.filter((marcador): marcador is MarcadorSimpleDeDocx => marcador.tipo === 'simple')
   /*
@@ -205,7 +202,7 @@ export function ConfirmacionDePlantillaDocx({
   }
 
   return (
-    <div ref={pantalla} className="flex min-h-0 flex-1 flex-col gap-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <h1 className="sr-only">Plantilla: {plantilla.nombre}</h1>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
