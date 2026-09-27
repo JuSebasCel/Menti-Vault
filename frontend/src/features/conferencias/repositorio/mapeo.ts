@@ -1,3 +1,4 @@
+import type { ReferenciaDeConferencia } from '../data'
 import type {
   Comparticion,
   Conferencia,
@@ -53,6 +54,7 @@ export type FilaDeConferencia = {
   readonly duracion_en_segundos: number
   readonly maximo_de_fichas?: number | null
   readonly tiempos_estimados?: boolean | null
+  readonly referencias?: readonly ReferenciaDeConferencia[] | null
   readonly id_dueno: string
   readonly estado: string
   readonly id_tema_principal: string | null
@@ -169,6 +171,7 @@ export function mapearConferencia(fila: FilaDeConferencia): Conferencia | null {
     /* `0` tambien es "sin tope": un tope de cero fichas no significa nada. */
     maximoDeFichas: fila.maximo_de_fichas ? fila.maximo_de_fichas : null,
     tiemposEstimados: fila.tiempos_estimados === true,
+    referencias: Array.isArray(fila.referencias) ? fila.referencias : [],
     idDueno: fila.id_dueno,
     estado: fila.estado as EstadoDeProcesamiento,
     /*

@@ -2,6 +2,7 @@ import { supabase } from '@/shared/supabase/cliente'
 import { hayBackend, pedirAlBackend } from '@/shared/api/backend'
 import { resultadoDe, resultadoDeLista } from '@/shared/supabase/consultas'
 import type { ResultadoDeConsulta } from '@/shared/supabase/consultas'
+import type { ReferenciaDeConferencia } from '../data'
 import type { Conferencia, EstadoDeValidacion, Ficha } from '../data'
 import { filaParaInsertar, mapearConferencia, mapearFicha, mapearFilas } from './mapeo'
 import type { ConferenciaParaInsertar, FilaDeConferencia, FilaDeFicha } from './mapeo'
@@ -421,4 +422,26 @@ export async function listarEstadosDeAnalisis(
     /* Una pasada perdida no importa: la siguiente vuelve a preguntar. */
     return { ok: false, codigo: 'DATOS_SIN_CONEXION' }
   }
+}
+
+/*
+  Busca las fuentes que la charla cita, en su transcripción y en sus
+  diapositivas, y las guarda en la conferencia. Tarda: son varias llamadas al
+  modelo, una por tramo.
+
+  `permitirInferencia` deja que la IA proponga la fuente probable de una
+  mención incompleta ("el informe del IPCC del año pasado"). Va apagado salvo
+  que la persona lo encienda en sus preferencias: una referencia inventada en
+  un documento académico es de los errores más caros de esta app.
+*/
+export async function buscarReferencias(
+  idConferencia: string,
+  permitirInferencia: boolean,
+): Promise<ResultadoDeConsulta<readonly ReferenciaDeConferencia[]>> {
+  const respuesta = await pedirAlBackend<{ referencias: readonly ReferenciaDeConferencia[] }>(
+    `/conferencias/${idConferencia}/referencias`,
+    { permitir_inferencia: permitirInferencia },
+  )
+
+  return respuesta.ok ? { ok: true, datos: respuesta.datos.referencias } : respuesta
 }

@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { useSearchParams } from 'react-router'
 import { PARAMETRO_DE_CREACION } from '@/app/layout/navegacion'
 import { useSession } from '@/features/auth/session'
+import { usePreferencias } from '@/features/configuracion/preferencias'
 import { useTemas } from '@/features/taxonomia'
 import { mensajeDeError } from '@/shared/errors'
 import { ModalDeCarga, useConferenciasVisibles } from '../components'
@@ -17,7 +18,7 @@ import {
 } from '../query'
 import { responderComparticion } from '@/features/configuracion/comparticiones/repositorio'
 import type { CriteriosDeListado } from '../query'
-import { actualizarConferencia, editarFicha, eliminarConferencia } from '../repositorio'
+import { actualizarConferencia, buscarReferencias, editarFicha, eliminarConferencia } from '../repositorio'
 import {
   alTerminarUnaTarea,
   analizarEnSegundoPlano,
@@ -61,6 +62,7 @@ export function PantallaConferencias(): ReactElement {
   const [panelDeCargaAbierto, setPanelDeCargaAbierto] = useState(false)
   const [compartirAbierto, setCompartirAbierto] = useState(false)
   const avisosDeCarga = useAvisosDeCarga()
+  const { citasInferidas } = usePreferencias()
 
   /*
     Cuando una subida o una petición de análisis termina en segundo plano, la
@@ -245,6 +247,16 @@ export function PantallaConferencias(): ReactElement {
         */
         alAnalizar={(idConferencia) => {
           void analizarEnSegundoPlano(idConferencia)
+        }}
+        /*
+          Buscar las fuentes citadas tarda —una llamada por tramo—, así que
+          devuelve el error para que el detalle lo enseñe donde se pidió, en
+          vez de dejar la espera sin explicación.
+        */
+        alBuscarReferencias={async (idConferencia) => {
+          const resultado = await buscarReferencias(idConferencia, citasInferidas)
+          recargar()
+          return resultado.ok ? null : mensajeDeError(resultado.codigo)
         }}
         alEditarFicha={async (idFicha, texto) => {
           const resultado = await editarFicha(idFicha, texto)

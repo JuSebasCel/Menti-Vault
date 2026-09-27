@@ -21,12 +21,20 @@ export type Preferencias = {
   readonly avisarAlTerminar: boolean
   /** El recorrido guiado ya se vio (o se saltó): no volver a abrirlo solo. */
   readonly tutorialVisto: boolean
+  /**
+   * Al buscar las fuentes que cita una charla, dejar que la IA proponga la
+   * referencia probable de una mención incompleta. Apagado por defecto: sin
+   * esto solo se recogen las que constan en la transcripción o en una
+   * diapositiva, con su evidencia.
+   */
+  readonly citasInferidas: boolean
 }
 
 const POR_DEFECTO: Preferencias = {
   analizarAlCargar: true,
   avisarAlTerminar: true,
   tutorialVisto: false,
+  citasInferidas: false,
 }
 
 let actuales: Preferencias = POR_DEFECTO

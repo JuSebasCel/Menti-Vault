@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from bitacora.api import chat, material, memorias, plantillas, procesamiento
+from bitacora.api import chat, material, memorias, plantillas, procesamiento, referencias
 from bitacora.compartido.configuracion import Configuracion
 from bitacora.compartido.errores import ErrorDeBitacora, MENSAJE_GENERICO
 
@@ -91,5 +91,6 @@ def crear_aplicacion(configuracion: Configuracion) -> FastAPI:
     aplicacion.include_router(memorias.router)
     aplicacion.include_router(plantillas.router)
     aplicacion.include_router(material.router)
+    aplicacion.include_router(referencias.router)
 
     return aplicacion

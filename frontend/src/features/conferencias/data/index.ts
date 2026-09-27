@@ -17,6 +17,7 @@ export type {
   Ficha,
   FuenteDeConferencia,
   Ponente,
+  ReferenciaDeConferencia,
   PrivacidadDeComparticion,
   TipoDeUnidad,
 } from './tipos'
