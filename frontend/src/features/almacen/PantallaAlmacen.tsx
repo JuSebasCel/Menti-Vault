@@ -343,6 +343,8 @@ function VisorDeArchivo({
   const [blob, setBlob] = useState<Blob | null>(null)
   const [fallo, setFallo] = useState(false)
   const [leyendo, setLeyendo] = useState(false)
+  /* Si la imagen ya bajó entera: hasta entonces se enseña un esqueleto en su lugar. */
+  const [cargada, setCargada] = useState(false)
   const [textoLeido, setTextoLeido] = useState<string | null>(null)
 
   async function leerTexto(): Promise<void> {
@@ -428,7 +430,22 @@ function VisorDeArchivo({
       ) : archivo.tipo === 'imagen' ? (
         direccion === null ? null : (
           <div className="flex flex-col gap-3">
-            <img src={direccion} alt={archivo.nombre} className="max-h-[60vh] w-fit rounded-[24px] bg-fondo" />
+            {/*
+              La imagen no se enseña hasta que está entera. Una foto de varios
+              megas se pintaba por franjas mientras bajaba, y eso se lee como
+              que la app va trabada. El hueco lo ocupa un esqueleto del mismo
+              alto, así que nada salta cuando aparece.
+            */}
+            {cargada ? null : <Esqueleto variante="lista" filas={3} etiqueta="Cargando la imagen" />}
+
+            <img
+              src={direccion}
+              alt={archivo.nombre}
+              decoding="async"
+              onLoad={() => setCargada(true)}
+              /* Oculta, no transparente: transparente seguía ocupando su sitio a medio pintar. */
+              className={`max-h-[60vh] w-fit rounded-[24px] bg-fondo ${cargada ? '' : 'hidden'}`}
+            />
 
             {/*
               Leer la imagen a mano. Es lo mismo que hace la memoria por
