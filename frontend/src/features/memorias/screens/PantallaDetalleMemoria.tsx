@@ -186,7 +186,21 @@ export function PantallaDetalleMemoria(): ReactElement {
       {error !== null ? (
         <PanelDeError mensaje={mensajeDeError(error)} />
       ) : resultado === null ? (
-        <p className="text-sm text-texto-tenue">Generando la memoria…</p>
+        /*
+          Un hueco con la forma de la hoja que va a llegar, y no una línea de
+          texto. Medido en la app: entre que se abre la memoria y que aparece
+          el documento pasa más de un segundo, y con solo "Generando la
+          memoria…" la pantalla se veía vacía y el documento entraba de golpe.
+          Ocupando su sitio desde el principio, no salta nada.
+        */
+        <div
+          role="status"
+          aria-label="Generando la memoria"
+          className="flex min-h-0 flex-1 flex-col items-center gap-4 rounded-[24px] bg-panel p-6"
+        >
+          <div className="barrido-de-carga relative w-full max-w-[42rem] flex-1 overflow-hidden rounded-[16px] bg-papel" />
+          <p className="text-sm text-texto-tenue">Generando la memoria…</p>
+        </div>
       ) : (
         <VistaPreviaDeMemoria resultado={resultado} nombre={memoria.nombre} />
       )}
