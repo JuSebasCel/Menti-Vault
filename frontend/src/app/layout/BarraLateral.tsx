@@ -91,7 +91,7 @@ export function BarraLateral({
         se lea.
       */
       style={{ width: plegada ? 0 : undefined }}
-      className={`${visibilidad} dock-entra fixed inset-y-0 left-0 z-30 w-60 shrink-0 flex-col border-r border-filete bg-fondo transition-[width] duration-500 ease-(--ease-entrada) focus:outline-none md:sticky md:z-auto md:h-dvh ${
+      className={`${visibilidad} dock-de-menti dock-entra fixed inset-y-0 left-0 z-30 w-60 shrink-0 flex-col border-r border-filete bg-fondo transition-[width] duration-500 ease-(--ease-entrada) focus:outline-none md:sticky md:z-auto md:h-dvh ${
         plegada ? 'overflow-hidden border-transparent' : 'overflow-x-hidden overflow-y-auto'
       }`}
     >

@@ -328,6 +328,55 @@
 }
 
 /*
+  Acentos de color (`shared/tema/apariencia.ts`).
+
+  La paleta del producto es monocroma y el acento es contraste, no color: eso
+  es lo aprobado y sigue siendo lo de fábrica. Estos son para quien quiera la
+  app con su color, y solo tocan el acento: el fondo, los paneles y el texto
+  no cambian, así que la interfaz no se vuelve otra, solo se reviste.
+
+  Valen igual en claro y en oscuro —un color elegido a propósito no debería
+  voltearse al cambiar el tema— y por eso van al final, después de los dos
+  temas, donde les ganan por orden. `acento-tenue` es el mismo color muy
+  diluido, que es lo que llevan las pastillas y los campos.
+*/
+:root[data-acento='azul'] {
+  --bitacora-acento: oklch(0.55 0.17 258);
+  --bitacora-acento-fuerte: oklch(0.48 0.18 258);
+  --bitacora-acento-tenue: oklch(0.55 0.17 258 / 0.14);
+  --bitacora-acento-contraste: #ffffff;
+}
+
+:root[data-acento='verde'] {
+  --bitacora-acento: oklch(0.58 0.14 155);
+  --bitacora-acento-fuerte: oklch(0.5 0.15 155);
+  --bitacora-acento-tenue: oklch(0.58 0.14 155 / 0.14);
+  --bitacora-acento-contraste: #ffffff;
+}
+
+:root[data-acento='ambar'] {
+  --bitacora-acento: oklch(0.72 0.15 75);
+  --bitacora-acento-fuerte: oklch(0.64 0.16 75);
+  --bitacora-acento-tenue: oklch(0.72 0.15 75 / 0.16);
+  --bitacora-acento-contraste: oklch(0.2 0.03 75);
+}
+
+:root[data-acento='violeta'] {
+  --bitacora-acento: oklch(0.55 0.19 300);
+  --bitacora-acento-fuerte: oklch(0.48 0.2 300);
+  --bitacora-acento-tenue: oklch(0.55 0.19 300 / 0.14);
+  --bitacora-acento-contraste: #ffffff;
+}
+
+:root[data-acento='turquesa'] {
+  --bitacora-acento: oklch(0.62 0.12 200);
+  --bitacora-acento-fuerte: oklch(0.54 0.13 200);
+  --bitacora-acento-tenue: oklch(0.62 0.12 200 / 0.16);
+  --bitacora-acento-contraste: #ffffff;
+}
+
+
+/*
   Iconos: Material Symbols Rounded, la misma familia de la referencia. Son un
   tipo de letra, no SVGs — el nombre del icono va como texto (`folder_open`) y
   la ligadura lo dibuja, así que el tamaño se controla con `font-size` y no
@@ -1085,4 +1134,24 @@
   to {
     transform: scaleY(1.35);
   }
+}
+
+/*
+  Dock compacto (`shared/tema/apariencia.ts`). Mismo dock, un punto más
+  callado: 208px de ancho y la letra un escalón por debajo. Para pantallas
+  pequeñas o para quien quiere el máximo de sitio para el contenido.
+
+  Va por atributo y no por una prop que baje hasta cada ítem: la jerarquía
+  del dock es tipográfica y se describe entera con dos tamaños.
+*/
+:root[data-dock='compacto'] .dock-de-menti {
+  width: 13rem;
+}
+
+:root[data-dock='compacto'] .dock-de-menti .item-de-dock {
+  font-size: 1.0625rem;
+}
+
+:root[data-dock='compacto'] .dock-de-menti .item-de-dock[aria-current='page'] {
+  font-size: 1.3125rem;
 }

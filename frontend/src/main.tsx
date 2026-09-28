@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { App } from '@/app/App'
+import { aplicarAparienciaGuardada } from '@/shared/tema/apariencia'
 import '@/styles/index.css'
 
 /*
@@ -11,6 +12,9 @@ import '@/styles/index.css'
   empezaría por `/apps/vault/`: esa entrada no pintaría nada.
 */
 const rutaBase = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
+
+/* Antes del primer render, como el tema: si no, se pinta un cuadro con el acento de fábrica. */
+aplicarAparienciaGuardada()
 
 const contenedor = document.getElementById('root')
 

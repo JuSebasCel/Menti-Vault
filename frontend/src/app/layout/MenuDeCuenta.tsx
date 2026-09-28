@@ -198,10 +198,7 @@ export function MenuDeCuenta({
           </div>
 
           <div className="flex flex-col">
-            {[
-              { etiqueta: 'Perfil', icono: 'person' },
-              { etiqueta: 'Apariencia', icono: 'palette' },
-            ].map((fila) => (
+            {[{ etiqueta: 'Perfil', icono: 'person' }].map((fila) => (
               <span
                 key={fila.etiqueta}
                 aria-disabled="true"
@@ -216,6 +213,14 @@ export function MenuDeCuenta({
                 </span>
               </span>
             ))}
+
+            {/* Apariencia ya existe: lleva a su sección dentro de Configuración. */}
+            <Link to="/configuracion#apariencia" onClick={cerrar} className={`${FILA} text-texto`}>
+              <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-xl text-texto-tenue">
+                palette
+              </span>
+              Apariencia
+            </Link>
 
             <Link to="/configuracion" onClick={cerrar} className={`${FILA} text-texto`}>
               <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-xl text-texto-tenue">

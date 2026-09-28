@@ -9,6 +9,7 @@ import { privacidadEfectiva } from '@/features/conferencias/query'
 import type { ConferenciaVisible } from '@/features/conferencias/query'
 import { Button, CLASES_DE_PILDORA, EleccionEnPastillas, Field, Input, MensajeDeFormulario } from '@/shared/ui'
 import type { ColorDePildora } from '@/shared/ui'
+import { ACENTOS, cambiarApariencia, useApariencia } from '@/shared/tema/apariencia'
 import { PROPOSITOS } from '../contextoApiKey'
 import type { AjustesDeIa, PropositoDeClave } from '../contextoApiKey'
 import { useApiKey } from '../useApiKey'
@@ -263,6 +264,58 @@ function ComoConseguirUnaClave(): ReactElement {
   cada opción dice lo que pasa, en vez de un "sí/no" que obliga a leer la
   pregunta dos veces para saber qué significa apagado.
 */
+/*
+  Cómo se ve la app. Va antes de las preferencias de comportamiento porque es
+  lo que se toca una vez y se deja: el color del acento y el tamaño del dock.
+
+  El tema (claro/oscuro/sistema) sigue en el menú de la cuenta, donde se
+  prueba mirando la app; repetirlo aquí sería el mismo control en dos sitios.
+*/
+function SeccionDeApariencia(): ReactElement {
+  const { acento, dock } = useApariencia()
+
+  return (
+    <section id="apariencia" aria-label="Apariencia" className="flex flex-col gap-5 rounded-[24px] bg-panel p-6">
+      <h2 className="font-titulo text-xl leading-tight font-semibold text-texto">Apariencia</h2>
+
+      <div className="flex flex-col gap-2">
+        <p className="px-1 text-xs text-texto-tenue">Color del acento</p>
+
+        <div className="flex flex-wrap gap-2">
+          {ACENTOS.map((opcion) => (
+            <button
+              key={opcion.valor}
+              type="button"
+              aria-pressed={acento === opcion.valor}
+              onClick={() => cambiarApariencia({ acento: opcion.valor })}
+              className={`flex h-10 cursor-pointer items-center gap-2 rounded-full px-3 text-sm transition-colors ${
+                acento === opcion.valor ? 'bg-acento text-acento-contraste' : 'bg-acento-tenue text-texto-tenue hover:text-texto'
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                style={{ background: opcion.muestra }}
+                className="size-4 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)]"
+              />
+              {opcion.etiqueta}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <EleccionEnPastillas
+        etiqueta="Tamaño del dock"
+        opciones={[
+          { valor: 'normal', etiqueta: 'Normal', icono: 'vertical_split' },
+          { valor: 'compacto', etiqueta: 'Compacto', icono: 'compress' },
+        ]}
+        valor={dock}
+        alCambiar={(valor) => cambiarApariencia({ dock: valor })}
+      />
+    </section>
+  )
+}
+
 function SeccionDePreferencias(): ReactElement {
   const { analizarAlCargar, avisarAlTerminar, citasInferidas } = usePreferencias()
 
@@ -525,13 +578,21 @@ export function PantallaConfiguracion(): ReactElement {
     la vista y recibe el foco, en vez de dejar a la persona a buscarlo.
   */
   useEffect(() => {
-    if (ubicacion.hash !== `#${ID_CAMPO_API_KEY}`) {
+    if (ubicacion.hash === '') {
       return
     }
 
-    const campo = document.getElementById(ID_CAMPO_API_KEY)
-    campo?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    campo?.focus()
+    /*
+      Vale para cualquier ancla de esta pantalla, no solo para la clave: el
+      menú de la cuenta enlaza también a `#apariencia`, y llegar arriba del
+      todo obligaría a buscar a mano la sección que se acababa de pedir.
+    */
+    const destino = document.getElementById(ubicacion.hash.slice(1))
+    destino?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    if (ubicacion.hash === `#${ID_CAMPO_API_KEY}`) {
+      destino?.focus()
+    }
   }, [ubicacion.hash])
 
   return (
@@ -539,6 +600,8 @@ export function PantallaConfiguracion(): ReactElement {
       <h1 className="font-titulo text-[32px] leading-none font-semibold text-texto">Configuración</h1>
 
       {ajustes.soyAdministracion ? <SeccionDeAdministracion /> : null}
+
+      <SeccionDeApariencia />
 
       <SeccionDePreferencias />
 
