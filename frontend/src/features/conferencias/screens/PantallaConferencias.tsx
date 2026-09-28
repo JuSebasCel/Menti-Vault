@@ -18,7 +18,13 @@ import {
 } from '../query'
 import { responderComparticion } from '@/features/configuracion/comparticiones/repositorio'
 import type { CriteriosDeListado } from '../query'
-import { actualizarConferencia, buscarReferencias, editarFicha, eliminarConferencia } from '../repositorio'
+import {
+  actualizarConferencia,
+  buscarReferencias,
+  editarFicha,
+  eliminarConferencia,
+  eliminarFicha,
+} from '../repositorio'
 import {
   alTerminarUnaTarea,
   analizarEnSegundoPlano,
@@ -257,6 +263,9 @@ export function PantallaConferencias(): ReactElement {
           const resultado = await buscarReferencias(idConferencia, citasInferidas)
           recargar()
           return resultado.ok ? null : mensajeDeError(resultado.codigo)
+        }}
+        alEliminarFicha={(idFicha) => {
+          void eliminarFicha(idFicha).then(recargar)
         }}
         alEditarFicha={async (idFicha, texto) => {
           const resultado = await editarFicha(idFicha, texto)

@@ -1,6 +1,8 @@
 export { Button } from './Button'
 export type { PropsBoton, VarianteBoton } from './Button'
 export { CampoDeContrasena } from './CampoDeContrasena'
+export { ConfirmacionEnSitio } from './ConfirmacionEnSitio'
+export type { PropsConfirmacionEnSitio } from './ConfirmacionEnSitio'
 export type { PropsCampoDeContrasena } from './CampoDeContrasena'
 export { Input } from './Input'
 export type { PropsInput } from './Input'

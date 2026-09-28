@@ -8,6 +8,7 @@ import {
   Popover,
   EstadoVacioIlustrado,
   CLASES_DE_PILDORA,
+  ConfirmacionEnSitio,
   colorPorClave,
   EleccionEnPastillas,
   Esqueleto,
@@ -840,6 +841,8 @@ export type PropsPantallaArchivo = {
   alEliminarConferencia?: (idConferencia: string) => void
   /** Guarda la versión escrita a mano de una ficha (texto vacío la quita). Solo sobre las propias. */
   alEditarFicha?: (idFicha: string, texto: string) => Promise<boolean>
+  /** Borra una ficha del análisis. Solo se ofrece sobre las conferencias propias. */
+  alEliminarFicha?: (idFicha: string) => void
 }
 
 export function PantallaArchivo({
@@ -868,6 +871,7 @@ export function PantallaArchivo({
   alRenombrarConferencia,
   alEliminarConferencia,
   alEditarFicha,
+  alEliminarFicha,
 }: PropsPantallaArchivo): ReactElement {
   const [evento, setEvento] = useState<string>(TODOS_EVENTOS)
   const [eje, setEje] = useState<Eje>('conferencias')
@@ -891,6 +895,8 @@ export function PantallaArchivo({
   const reducirMovimiento = useReducedMotion()
   const [borrador, setBorrador] = useState('')
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  /* La ficha cuyo borrado está preguntando, con el mismo gesto que las etiquetas. */
+  const [fichaPorBorrar, setFichaPorBorrar] = useState<string | null>(null)
 
   useEffect(() => {
     setAudioAbierto(false)
@@ -2150,6 +2156,40 @@ export function PantallaArchivo({
                   <p className="text-[19px] leading-relaxed text-texto">{activa.ficha.condensado}</p>
                 </div>
               </section>
+            ) : null}
+
+            {/*
+              Borrar la ficha se confirma sobre el propio botón, como las
+              etiquetas y como los eventos: el mismo gesto en toda la app.
+              No hay papelera porque el análisis es reproducible —volver a
+              analizar la conferencia devuelve todas sus fichas—, y eso se
+              dice aquí en vez de guardarlas en un cajón que nadie abre.
+            */}
+            {activaEsPropia && alEliminarFicha !== undefined ? (
+              <div className="flex items-center gap-3">
+                {fichaPorBorrar === activa.ficha.id ? (
+                  <ConfirmacionEnSitio
+                    nombre="esta ficha"
+                    alCancelar={() => setFichaPorBorrar(null)}
+                    alConfirmar={() => {
+                      setFichaPorBorrar(null)
+                      setIdFicha(null)
+                      alEliminarFicha(activa.ficha.id)
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setFichaPorBorrar(activa.ficha.id)}
+                    className="flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-sm text-texto-tenue transition-colors hover:bg-acento-tenue hover:text-error"
+                  >
+                    <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-lg">
+                      delete
+                    </span>
+                    Borrar la ficha
+                  </button>
+                )}
+              </div>
             ) : null}
 
             {activaEsPropia && alEditarFicha !== undefined ? (

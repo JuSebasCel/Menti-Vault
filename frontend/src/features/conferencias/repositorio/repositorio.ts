@@ -145,6 +145,23 @@ export async function editarFicha(idFicha: string, texto: string): Promise<Resul
 }
 
 /*
+  Borra una ficha. No hay papelera: el análisis es reproducible —volver a
+  analizar la conferencia las devuelve todas—, así que guardar una ficha
+  borrada solo sería un cajón que nadie abre.
+
+  Quien no sea el dueño no llega aquí: la RLS de `fichas` deja borrar solo
+  las de las conferencias propias, y la interfaz solo ofrece el gesto sobre
+  ellas.
+*/
+export async function eliminarFicha(idFicha: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('fichas').delete().eq('id', idFicha)
+
+  return error === null
+    ? { ok: true, datos: null }
+    : resultadoDe({ data: null, error }, () => ({ ok: false, codigo: 'DATOS_SIN_PERMISO' }))
+}
+
+/*
   Una dirección temporal para escuchar el audio de una conferencia.
 
   El nombre del archivo no se guarda en ninguna parte (ver

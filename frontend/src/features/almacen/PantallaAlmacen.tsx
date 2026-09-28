@@ -7,11 +7,12 @@ import { useConferenciasVisibles } from '@/features/conferencias/components'
 import type { Conferencia } from '@/features/conferencias/data'
 import { formatearFecha, formatearTimestamp } from '@/features/conferencias/data'
 import { VistaPreviaDeDocx } from '@/features/plantillas/components/VistaPreviaDeDocx'
-import { EstadoVacioIlustrado, Esqueleto } from '@/shared/ui'
+import { ConfirmacionEnSitio, EstadoVacioIlustrado, Esqueleto } from '@/shared/ui'
 import {
   EXTENSIONES_DE_APOYO,
   descargar,
   direccionDe,
+  eliminarMaterialDeApoyo,
   leerImagenConIa,
   listarArchivos,
   sePuedeLeerConIa,
@@ -200,6 +201,7 @@ function ContenidoDeCarpeta({ conferencia }: { conferencia: Conferencia }): Reac
   const [error, setError] = useState(false)
   const [rutaAbierta, setRutaAbierta] = useState<string | null>(null)
   const [subiendo, setSubiendo] = useState(false)
+  const [porBorrar, setPorBorrar] = useState<string | null>(null)
 
   async function adjuntar(elegidos: FileList | null): Promise<void> {
     const archivos = [...(elegidos ?? [])]
@@ -308,6 +310,41 @@ function ContenidoDeCarpeta({ conferencia }: { conferencia: Conferencia }): Reac
               )
             })}
           </ul>
+
+          {/*
+            Quitar el material de apoyo abierto. Solo el de apoyo: el audio y
+            la transcripción son la fuente de la charla, y sin ellos sus
+            fichas dejan de poder comprobarse.
+          */}
+          {abierto?.esApoyo === true ? (
+            <div className="flex items-center gap-3">
+              {porBorrar === abierto.ruta ? (
+                <ConfirmacionEnSitio
+                  nombre={abierto.nombre}
+                  alCancelar={() => setPorBorrar(null)}
+                  alConfirmar={() => {
+                    setPorBorrar(null)
+                    void eliminarMaterialDeApoyo(abierto.ruta).then(() => {
+                      const quedan = archivos.filter((candidato) => candidato.ruta !== abierto.ruta)
+                      setArchivos(quedan)
+                      setRutaAbierta(quedan[0]?.ruta ?? null)
+                    })
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPorBorrar(abierto.ruta)}
+                  className="flex h-9 w-fit cursor-pointer items-center gap-2 rounded-full px-3 text-sm text-texto-tenue transition-colors hover:bg-acento-tenue hover:text-error"
+                >
+                  <span aria-hidden="true" className="material-symbols-rounded icono-contorno text-lg">
+                    delete
+                  </span>
+                  Quitar este material
+                </button>
+              )}
+            </div>
+          ) : null}
 
           <AnimatePresence mode="wait" initial={false}>
             {abierto === null ? null : (

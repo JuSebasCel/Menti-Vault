@@ -126,6 +126,22 @@ export async function subirMaterialDeApoyo(
   return { ok: true, datos: null }
 }
 
+/*
+  Quita un archivo de apoyo. Solo de apoyo: el audio y la transcripción son la
+  fuente de la conferencia, y borrarlos dejaría fichas que ya no se pueden
+  comprobar —para eso está borrar la conferencia entera—.
+*/
+export async function eliminarMaterialDeApoyo(ruta: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.storage.from(BUCKET).remove([ruta])
+
+  if (error !== null) {
+    console.error('[almacen] no se pudo borrar el material de apoyo:', error.message)
+    return { ok: false, codigo: 'DATOS_SIN_PERMISO' }
+  }
+
+  return { ok: true, datos: null }
+}
+
 /** Una dirección temporal para reproducir o abrir el archivo sin descargarlo entero antes. */
 export async function direccionDe(ruta: string): Promise<string | null> {
   const { data } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, VIGENCIA_DE_LA_FIRMA_S)
