@@ -75,7 +75,9 @@ export async function obtenerConferencia(
 
   const conferencia = mapearConferencia(fila.datos)
 
-  return conferencia === null ? { ok: false, codigo: 'CONF_NO_ENCONTRADA' } : { ok: true, datos: conferencia }
+  return conferencia === null
+    ? { ok: false, codigo: 'CONF_NO_ENCONTRADA' }
+    : { ok: true, datos: conferencia }
 }
 
 /** Las fichas de una conferencia. RLS ya excluye las pendientes si la compartición no las incluye. */
@@ -132,7 +134,10 @@ export async function actualizarEstadoDeValidacion(
   (ver la migración 20260922120000). RLS solo deja escribir al dueño de la
   conferencia.
 */
-export async function editarFicha(idFicha: string, texto: string): Promise<ResultadoDeConsulta<null>> {
+export async function editarFicha(
+  idFicha: string,
+  texto: string,
+): Promise<ResultadoDeConsulta<null>> {
   const limpio = texto.trim()
   const { error } = await supabase
     .from('fichas')
@@ -186,22 +191,46 @@ export async function urlDelAudio(idDueno: string, idConferencia: string): Promi
   const carpeta = `${idDueno}/${idConferencia}`
   const almacen = supabase.storage.from(BUCKET_DE_AUDIO)
   const { data: objetos } = await almacen.list(carpeta)
-  /* La transcripción que guarda el backend vive en la misma carpeta: no es el audio. */
-  const archivo = objetos?.find(
-    (objeto) => objeto.name !== '.emptyFolderPlaceholder' && objeto.name !== 'transcripcion-guardada.json',
-  )
+
+  /*
+    Las carpetas vienen en el mismo listado que los archivos, con `metadata`
+    en nulo, y `apoyo` ordena antes que el nombre de cualquier audio. Sin
+    descartarlas se firmaba la carpeta de material de apoyo como si fuera la
+    grabación: el reproductor decía "No hay audio disponible" en una charla
+    que tenía su audio ahí al lado, y la contradicción era peor que el fallo
+    porque el Almacén —que sí filtra— lo seguía enseñando.
+
+    El criterio es el mismo que usa `descargar_fuente` en el backend, y se
+    ordena por nombre como allí: lo que se escucha tiene que ser el mismo
+    archivo que se transcribió.
+  */
+  const archivo = (objetos ?? [])
+    .filter(
+      (objeto) =>
+        objeto.metadata !== null &&
+        objeto.name !== '.emptyFolderPlaceholder' &&
+        objeto.name !== 'transcripcion-guardada.json',
+    )
+    /* Por punto de código y no con `localeCompare`, que es lo que hace `sorted()` en Python. */
+    .sort((uno, otro) => (uno.name < otro.name ? -1 : uno.name > otro.name ? 1 : 0))[0]
 
   if (archivo === undefined) {
     return null
   }
 
-  const { data } = await almacen.createSignedUrl(`${carpeta}/${archivo.name}`, VIGENCIA_DE_LA_FIRMA_S)
+  const { data } = await almacen.createSignedUrl(
+    `${carpeta}/${archivo.name}`,
+    VIGENCIA_DE_LA_FIRMA_S,
+  )
   if (data?.signedUrl === undefined) {
     return null
   }
 
   /* Un minuto antes de que venza, para no entregar una firma que caduca a mitad de escuchar. */
-  direccionesDeAudio.set(idConferencia, { url: data.signedUrl, vence: Date.now() + (VIGENCIA_DE_LA_FIRMA_S - 60) * 1000 })
+  direccionesDeAudio.set(idConferencia, {
+    url: data.signedUrl,
+    vence: Date.now() + (VIGENCIA_DE_LA_FIRMA_S - 60) * 1000,
+  })
   return data.signedUrl
 }
 
@@ -234,7 +263,11 @@ export function nombreParaAlmacenamiento(nombreDeArchivo: string): string {
   return limpio.length > 0 ? limpio : 'archivo'
 }
 
-export function rutaDeAudio(idDueno: string, idConferencia: string, nombreDeArchivo: string): string {
+export function rutaDeAudio(
+  idDueno: string,
+  idConferencia: string,
+  nombreDeArchivo: string,
+): string {
   return `${idDueno}/${idConferencia}/${nombreParaAlmacenamiento(nombreDeArchivo)}`
 }
 
@@ -417,7 +450,11 @@ export async function eliminarConferencia(
     : resultadoDe({ data: null, error }, () => ({ ok: false, codigo: 'DATOS_SIN_PERMISO' }))
 }
 
-export type EstadoDeAnalisis = { readonly id: string; readonly titulo: string; readonly estado: string }
+export type EstadoDeAnalisis = {
+  readonly id: string
+  readonly titulo: string
+  readonly estado: string
+}
 
 /*
   Solo lo necesario para saber si un análisis terminó: id, título y estado de
@@ -428,7 +465,10 @@ export async function listarEstadosDeAnalisis(
   idDueno: string,
 ): Promise<ResultadoDeConsulta<readonly EstadoDeAnalisis[]>> {
   try {
-    const respuesta = await supabase.from('conferencias').select('id, titulo, estado').eq('id_dueno', idDueno)
+    const respuesta = await supabase
+      .from('conferencias')
+      .select('id, titulo, estado')
+      .eq('id_dueno', idDueno)
 
     if (respuesta.error !== null || respuesta.data === null) {
       return { ok: false, codigo: 'DATOS_FALLO_INESPERADO' }
