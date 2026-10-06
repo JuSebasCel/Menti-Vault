@@ -53,18 +53,24 @@ MODELOS_GROQ_FICHAS_POR_DEFECTO = "openai/gpt-oss-120b,llama-3.3-70b-versatile,o
 MODELOS_GROQ_CHAT_POR_DEFECTO = "openai/gpt-oss-20b,openai/gpt-oss-120b,llama-3.1-8b-instant"
 
 """
-Los que aceptan imágenes: leen el texto de una diapositiva adjuntada como
-foto o captura (`memorias/vision.py`). Los de fichas y chat no lo hacen, y
-pedírselo devuelve un error del proveedor, no una respuesta peor.
+Los que aceptan imágenes: leen una diapositiva adjuntada como foto o captura
+(`memorias/vision.py`). Los de fichas y chat no lo hacen, y pedírselo
+devuelve un error del proveedor, no una respuesta peor.
 
-Estos nombres caducan. Los primeros que se pusieron aquí —los Llama 4 de
-abril de 2026— ya no estaban en el catálogo de Groq unos meses después, y
-como un modelo inexistente falla igual que una imagen ilegible, las
-diapositivas dejaron de leerse sin que nadie se enterara. Si vuelve a pasar,
-se cambia con `BITACORA_MODELOS_GROQ_VISION` sin tocar el código, y la
-lectura a mano desde el Almacén dice el motivo en vez de callarlo.
+**Uno solo, y no por descuido.** Groq documenta un único modelo con entrada
+de imagen, así que aquí no hay cadena de respaldo que valga: si ese modelo
+responde límite de uso, la lectura se queda sin hacer. El respaldo que había
+—`qwen/qwen3.6-27b`— se apagó el 14 de septiembre de 2026 y llevaba semanas
+sin existir; un modelo inexistente falla igual que una imagen ilegible, de
+modo que no respaldaba nada y además escondía el motivo real detrás de un
+segundo intento.
+
+Estos nombres caducan, y ya ha pasado dos veces (antes fueron los Llama 4 de
+abril de 2026). Cuando vuelva a pasar se cambia con
+`BITACORA_MODELOS_GROQ_VISION` sin tocar el código, y la lectura a mano desde
+el Almacén dice el motivo en vez de callarlo.
 """
-MODELOS_GROQ_VISION_POR_DEFECTO = "qwen/qwen3.8-27b,qwen/qwen3.6-27b"
+MODELOS_GROQ_VISION_POR_DEFECTO = "qwen/qwen3.8-27b"
 
 """Con una clave de OpenAI, el modelo con visión más barato de su catálogo."""
 MODELO_DE_VISION_DE_OPENAI = "gpt-4o-mini"

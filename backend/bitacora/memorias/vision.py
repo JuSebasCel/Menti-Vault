@@ -1,23 +1,39 @@
 """
-Leer el texto de una imagen: la foto o la captura de una diapositiva.
+Leer una imagen: la foto o la captura de una diapositiva.
 
 Parte de lo que una memoria necesita —un correo de contacto, un teléfono, el
-nombre de una institución— se mostró en una lámina y nunca se dijo en voz
-alta. Si esa lámina llega como `.pptx` o `.pdf`, su texto se saca del propio
-archivo (`material.py`). Si llega como imagen, no hay texto que sacar: hay
-que mirarla.
+nombre de una institución, la tendencia que enseñaba un gráfico— se mostró en
+una lámina y nunca se dijo en voz alta. Si esa lámina llega como `.pptx` o
+`.pdf`, su texto se saca del propio archivo (`material.py`). Si llega como
+imagen, no hay texto que sacar: hay que mirarla.
 
-**Un modelo con visión, y una sola pasada por imagen.** Se le pide que
-TRANSCRIBA lo que se ve, no que resuma ni interprete: lo que devuelve entra
-después en el mismo recorrido que la transcripción de la charla
-(`rastreo.py`), que ya sabe buscar en texto lo que pide cada hueco. Así la
-visión hace una sola cosa —convertir imagen en texto— y no hay dos caminos
-distintos según de dónde venga el material.
+**Dos bloques en una sola pasada: lo literal y la lectura.** La primera
+versión solo pedía TRANSCRIBIR, y por una razón que sigue en pie: lo que la
+visión devuelve entra en el mismo recorrido que la transcripción de la charla
+(`rastreo.py`), que busca en texto el dato que pide cada hueco, y un resumen
+en lugar del original pierde justo lo que ese recorrido necesita —el correo
+exacto, la cifra, el apellido bien escrito—. Pero transcribir solo no bastaba
+con una lámina cuyo contenido no es texto: un gráfico de barras rotulado con
+años y porcentajes se transcribía como una lista de números sin lo que esos
+números dicen, y la memoria no podía contar la diapositiva porque nadie la
+había leído.
 
-En Groq son los modelos Llama 4 (`BITACORA_MODELOS_GROQ_VISION`); con una
-clave de OpenAI, `gpt-4o-mini`. Si el modelo configurado no acepta imágenes,
-la lectura falla y se sigue sin ella: la memoria se escribe con el resto del
-material en vez de no escribirse.
+Así que se piden las dos cosas, rotuladas y en este orden: `TEXTO`, lo que
+está escrito, carácter por carácter; y `LECTURA`, qué muestra la lámina y qué
+afirma. El orden importa: el dato duro va primero porque es el que el rastreo
+copia tal cual, y la lectura va detrás porque es interpretación y tiene que
+poder distinguirse de lo que consta. Separar los bloques es lo que permite
+interpretar sin arriesgar que una cifra acabe redondeada dentro de una frase.
+
+La LECTURA explica lo que hay en la imagen y nada más: no añade contexto de
+fuera ni estima lo que no esté escrito. Un modelo al que se le pide
+«interpreta esta diapositiva» sin ese límite rellena los huecos con lo que
+suele haber en una diapositiva parecida.
+
+En Groq, `qwen/qwen3.8-27b` (`BITACORA_MODELOS_GROQ_VISION`); con una clave de
+OpenAI, `gpt-4o-mini`. Si el modelo configurado no acepta imágenes, la lectura
+falla y se sigue sin ella: la memoria se escribe con el resto del material en
+vez de no escribirse.
 """
 
 from __future__ import annotations
@@ -44,19 +60,34 @@ BYTES_MAXIMOS_POR_IMAGEN = 12 * 1024 * 1024
 MAXIMO_DE_IMAGENES = 12
 
 INSTRUCCION = """\
-Transcribe TODO el texto que aparece en la imagen, tal cual, sin resumir, sin \
-ordenar y sin interpretar.
+Mira la imagen —casi siempre una diapositiva de una charla— y devuélvela en \
+dos bloques, en este orden y con estos rótulos exactos:
+
+TEXTO
+Todo el texto que aparece, copiado tal cual, sin resumir y sin reordenar.
+
+LECTURA
+Qué muestra la lámina y qué dice, en dos a cinco frases.
 
 Reglas:
 
-1. Copia los datos exactos: correos, teléfonos, cifras, nombres propios y \
-direcciones web, carácter por carácter. Son lo que más importa.
-2. Si algo no se lee con seguridad, escríbelo seguido de [ilegible] en vez de \
-adivinarlo.
-3. Describe en una línea lo que muestre un gráfico o una foto, solo si no \
-tiene texto propio.
-4. Si la imagen no tiene texto ni nada identificable, responde exactamente \
-SIN TEXTO."""
+1. En TEXTO, los datos exactos van carácter por carácter: correos, teléfonos, \
+cifras, porcentajes, años, nombres propios y direcciones web. Son lo que más \
+importa de toda la respuesta.
+2. Lo que no se lea con seguridad va seguido de [ilegible]. Nunca lo adivines \
+ni lo completes.
+3. En LECTURA explica lo que la lámina afirma: qué dice un gráfico o una \
+tabla (la tendencia, la comparación, el valor que destaca y en qué unidades), \
+qué relación hay entre sus partes (un flujo, unas fases, una jerarquía, un \
+antes y un después) y qué se ve en una foto o un esquema sin rótulos.
+4. La LECTURA habla SOLO de lo que está en la imagen. No añadas contexto que \
+no esté ahí, no estimes cifras que no estén escritas y no supongas de qué \
+charla es ni qué dijo el ponente.
+5. Si algo queda dudoso, dilo en la LECTURA en vez de resolverlo por tu \
+cuenta: "la etiqueta del eje no se lee".
+6. Si la imagen no tiene nada escrito, deja TEXTO vacío y escribe solo la \
+LECTURA.
+7. Si no hay nada identificable, responde exactamente SIN TEXTO."""
 
 _TIPOS = {
     ".png": "image/png",
@@ -119,7 +150,7 @@ def lector_de_imagenes(cliente: ClienteDeOpenAI, modelo: str) -> LectorDeImagene
             if texto == "" or texto.upper().startswith("SIN TEXTO"):
                 continue
 
-            textos.append(f"MATERIAL DE APOYO «{nombre}» (texto leído de la imagen)\n{texto}")
+            textos.append(f"MATERIAL DE APOYO «{nombre}» (imagen leída por un modelo con visión)\n{texto}")
 
         return tuple(textos)
 
