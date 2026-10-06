@@ -25,5 +25,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Material con el que se prueba el análisis a mano: transcripciones de charlas
+# reales. No entra en ninguna construcción ni despliegue, y son de charlas de
+# verdad, así que no tienen por qué viajar en el repositorio.
+pruebas/
+
 # Worktrees de agentes (efímeros)
 .claude/worktrees/
