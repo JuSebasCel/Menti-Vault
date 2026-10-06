@@ -50,6 +50,7 @@ const MEMORIA_ALCANTARA: Memoria = {
   idDueno: ID_ALCANTARA,
   nombre: 'Memoria de Modelos de lenguaje aplicados a la revisión sistemática de literatura',
   generadaEl: '2026-04-15T10:00:00.000Z',
+  estado: 'lista' as const,
 }
 
 const MEMORIA_DE_SESGOS: Memoria = {
@@ -59,6 +60,7 @@ const MEMORIA_DE_SESGOS: Memoria = {
   idDueno: ID_ALCANTARA,
   nombre: 'Memoria de sesgos algorítmicos',
   generadaEl: '2026-05-20T10:00:00.000Z',
+  estado: 'lista' as const,
 }
 
 const ALCANTARA = {

@@ -1,5 +1,5 @@
 """
-Lo que la redacción necesita leer: la conferencia, sus fichas y su transcripción.
+Lo que la redacción necesita leer, y dónde deja lo que escribió.
 
 Con el cliente de la persona que pide, igual que el resto del backend: RLS
 decide qué conferencias puede usar para una memoria, y una que no le
@@ -8,7 +8,9 @@ corresponde llega como no encontrada.
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+
+from typing import Any, Mapping
 
 from bitacora.analisis.chunking import agrupar_en_ventanas, renderizar_ventana
 from bitacora.memorias.material import texto_de_material
@@ -18,6 +20,8 @@ from bitacora.conferencias.repositorio import RepositorioSupabase
 from bitacora.memorias.redaccion import DatosDeLaCharla, FichaParaRedactar
 from bitacora.transcripcion.lectura import texto_de_archivo
 from bitacora.transcripcion.segmentos import segmentos_desde_transcripcion
+
+registro = logging.getLogger("bitacora.memorias.repositorio")
 
 
 def leer_material(
@@ -139,3 +143,36 @@ def leer_imagenes_de_apoyo(cliente: ClienteSupabase, id_conferencia: str) -> tup
         )
     except Exception:  # noqa: BLE001
         return ()
+
+
+def guardar_redaccion(
+    cliente: ClienteSupabase, id_memoria: str, secciones: Mapping[str, str | None]
+) -> None:
+    """
+    Lo redactado y el estado, en una sola escritura.
+
+    Las dos cosas juntas y no en dos pasos: una memoria que dijera `lista`
+    antes de tener sus secciones se abriría vacía, y el orden inverso dejaría
+    contenido bueno marcado como si siguiera generándose. Es la fila la que
+    tiene que pasar de un estado coherente al siguiente.
+    """
+    try:
+        cliente.table("memorias").update({"secciones": dict(secciones), "estado": "lista"}).eq(
+            "id", id_memoria
+        ).execute()
+    except Exception as fallo:  # noqa: BLE001
+        raise traducir_fallo_de_datos(fallo) from fallo
+
+
+def marcar_memoria_fallida(cliente: ClienteSupabase, id_memoria: str) -> None:
+    """
+    Que la redacción falle no puede dejar la fila diciendo `generando` para
+    siempre: la interfaz la consultaría sin fin y quien la pidió no sabría
+    nunca que no va a llegar. Esto corre en el manejo de un fallo, así que no
+    vuelve a lanzar: si tampoco se puede escribir el estado, lo que importa es
+    el fallo original.
+    """
+    try:
+        cliente.table("memorias").update({"estado": "fallida"}).eq("id", id_memoria).execute()
+    except Exception:  # noqa: BLE001
+        registro.warning("no se pudo marcar la memoria como fallida id=%s", id_memoria)

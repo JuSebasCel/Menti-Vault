@@ -14,5 +14,6 @@ export const MEMORIAS_DE_EJEMPLO: readonly Memoria[] = [
     idDueno: '1ba5af9a-f6a2-4504-ab60-1f018c21290a',
     nombre: 'Memoria de Modelos de lenguaje aplicados a la revisión sistemática de literatura',
     generadaEl: '2026-04-15T10:00:00.000Z',
+    estado: 'lista' as const,
   },
 ]

@@ -26,6 +26,7 @@ const MEMORIA_GUARDADA: Memoria = {
   idDueno: ID_USUARIO,
   nombre: 'Memoria de la charla de apertura',
   generadaEl: '2026-04-15T10:00:00.000Z',
+  estado: 'lista' as const,
 }
 
 beforeEach(() => {

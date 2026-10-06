@@ -12,6 +12,7 @@ const MEMORIA: Memoria = {
   idDueno: 'usr-prueba',
   nombre: 'Memoria de prueba',
   generadaEl: '2026-05-01T10:00:00.000Z',
+  estado: 'lista' as const,
 }
 
 afterEach(() => {

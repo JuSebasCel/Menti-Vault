@@ -1,11 +1,39 @@
-import type { ReactElement } from 'react'
+import type { MouseEvent, ReactElement, ReactNode } from 'react'
 import { useRef } from 'react'
 import { recordarOrigenDeApertura, useAterrizarDesdeCierre } from '@/shared/ui'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { formatearFecha } from '@/features/conferencias/data'
 import type { Memoria } from '../data'
-import { progresoDeGeneracion } from '../progreso'
+
+/*
+  El mismo contenido, navegable o no. Se usa un `div` en vez de un `Link`
+  deshabilitado porque un ancla sin destino sigue recibiendo el foco y el
+  teclado, y anunciaría a un lector de pantalla un enlace que no lleva a
+  ninguna parte.
+*/
+function Enlace({
+  to,
+  desactivado,
+  onClick,
+  className,
+  children,
+}: {
+  to: string
+  desactivado: boolean
+  onClick: (evento: MouseEvent<HTMLAnchorElement>) => void
+  className: string
+  children: ReactNode
+}): ReactElement {
+  if (desactivado) {
+    return <div className={className}>{children}</div>
+  }
+
+  return (
+    <Link to={to} onClick={onClick} className={className}>
+      {children}
+    </Link>
+  )
+}
 
 export type PropsTarjetaDeMemoria = {
   memoria: Memoria
@@ -26,10 +54,16 @@ export type PropsTarjetaDeMemoria = {
   no una elevación. El hover solo lleva el título al color de acento.
 
   La barra de "generando" vive aquí, no en el panel que la creó: al enviar
-  el panel, la memoria queda guardada y su tarjeta aparece de inmediato en
-  el listado con el avance de su generación (simulada, ver `../progreso.ts`)
-  — mismo criterio que una conferencia recién cargada aparece "Procesando"
-  en el dashboard (F3), en vez de bloquear el panel hasta que termine.
+  el panel, la memoria queda guardada y su tarjeta aparece de inmediato en el
+  listado — mismo criterio que una conferencia recién cargada aparece
+  "Procesando" en el dashboard (F3), en vez de bloquear el panel hasta que
+  termine.
+
+  La barra no tiene porcentaje, y es a propósito: la redacción son varias
+  llamadas al modelo cuyo número depende de cuánto haya que rastrear, así que
+  cualquier cifra sería inventada. Un barrido dice "esto sigue andando", que
+  es lo único que se sabe de verdad. La anterior era una cuenta de 2,5
+  segundos que llegaba al 100 % mientras el backend seguía trabajando.
 */
 export function TarjetaDeMemoria({
   memoria,
@@ -42,21 +76,8 @@ export function TarjetaDeMemoria({
   const tarjeta = useRef<HTMLDivElement>(null)
   /* Al volver del detalle, la tarjeta se recompone desde donde estaba la pantalla. */
   useAterrizarDesdeCierre(tarjeta, memoria.id)
-  const [progreso, setProgreso] = useState(() => progresoDeGeneracion(memoria.generadaEl, Date.now()))
-
-  useEffect(() => {
-    if (progreso >= 100) {
-      return
-    }
-
-    const intervalo = setInterval(() => {
-      setProgreso(progresoDeGeneracion(memoria.generadaEl, Date.now()))
-    }, 200)
-
-    return () => clearInterval(intervalo)
-  }, [memoria.generadaEl, progreso])
-
-  const generando = progreso < 100
+  const generando = memoria.estado === 'generando'
+  const fallida = memoria.estado === 'fallida'
 
   function alPulsarEliminar(): void {
     if (window.confirm(`¿Eliminar la memoria «${memoria.nombre}»? Esta acción no se puede deshacer.`)) {
@@ -96,8 +117,15 @@ export function TarjetaDeMemoria({
         plantillas (`shared/ui/crecerDesde.ts`). Sin esto, el detalle
         aparecía de golpe y costaba saber de cuál de las tarjetas venía.
       */}
-      <Link
+      {/*
+        Mientras se genera no se puede abrir: el detalle arma el documento con
+        las secciones de la fila, y una memoria sin ellas todavía se vería
+        llena de los datos de ejemplo de la plantilla. Parecería terminada y
+        mal escrita, en vez de a medias.
+      */}
+      <Enlace
         to={`/memorias/${memoria.id}`}
+        desactivado={generando}
         onClick={(evento) => recordarOrigenDeApertura(evento.currentTarget.closest('[data-memoria]'))}
         className={esFila ? 'flex min-w-0 flex-1 items-center gap-4' : 'flex flex-col gap-3'}
       >
@@ -131,23 +159,22 @@ export function TarjetaDeMemoria({
 
         {generando && !esFila ? (
           <div className="flex flex-col gap-1.5 pt-0.5">
+            {/* Sin `aria-valuenow`: un progressbar sin valor es la forma de decir "en marcha, sin saber cuánto". */}
             <div
               role="progressbar"
               aria-label={`Generando «${memoria.nombre}»`}
-              aria-valuenow={progreso}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="h-1 w-full overflow-hidden rounded-full bg-acento-tenue"
-            >
-              <div
-                className="h-full rounded-full bg-acento transition-[width] duration-200 ease-linear"
-                style={{ width: `${progreso}%` }}
-              />
-            </div>
+              className="barrido-de-carga relative h-1 w-full overflow-hidden rounded-full bg-acento-tenue"
+            />
             <span className="text-xs text-texto-tenue">Generando…</span>
           </div>
         ) : null}
-      </Link>
+
+        {fallida && !esFila ? (
+          <span className="pt-0.5 text-xs text-texto-tenue">
+            No se pudo redactar. Genérala de nuevo para volver a intentarlo.
+          </span>
+        ) : null}
+      </Enlace>
 
       <button
         type="button"

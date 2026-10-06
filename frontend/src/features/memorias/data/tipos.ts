@@ -14,6 +14,20 @@
   origen sigue siendo cosa de `comparticiones` sobre la conferencia, no de
   este campo.
 */
+/**
+ * En qué punto va su redacción, igual que `estado` en una conferencia.
+ *
+ * Redactar son minutos y hasta cuarenta llamadas al modelo (rastreo de la
+ * transcripción más una por diapositiva adjuntada como imagen), así que el
+ * backend responde 202 y escribe aquí cuando acaba. La tarjeta existe desde
+ * el primer momento diciendo `generando`, y cerrar el panel o cambiar de
+ * pantalla no interrumpe nada.
+ *
+ * Las memorias de antes de esto, y las que se crean sin backend, nacen
+ * `lista`: su contenido ya está.
+ */
+export type EstadoDeMemoria = 'generando' | 'lista' | 'fallida'
+
 export type Memoria = {
   readonly id: string
   readonly idConferencia: string
@@ -21,6 +35,7 @@ export type Memoria = {
   readonly idDueno: string
   readonly nombre: string
   readonly generadaEl: string
+  readonly estado: EstadoDeMemoria
   /**
    * Lo que la IA escribió en cada hueco, por id de marcador.
    *

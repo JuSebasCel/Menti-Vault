@@ -5,11 +5,11 @@ import type { Memoria } from './data'
 import { crearMemoria as crearMemoriaPura } from './memorias'
 import type { ResultadoMemoria } from './memorias'
 import { memoriasRecordadas, recordarMemorias } from './memoriasRecordadas'
-import { crearMemoria, eliminarMemoria, listarMemorias } from './repositorio'
-import { redactarSecciones } from './redaccion'
+import { crearMemoria, eliminarMemoria, listarMemorias, marcarMemoriaFallida } from './repositorio'
+import { pedirRedaccion } from './redaccion'
 import { preferenciasActuales } from '@/features/configuracion/preferencias'
 import { avisarTermino } from '@/shared/avisos/avisoDeTermino'
-import type { HuecoParaRedactar, SeccionesRedactadas } from './redaccion'
+import type { HuecoParaRedactar } from './redaccion'
 
 /*
   Estado de las memorias del grupo contra Supabase (B6). Mismo reparto que
@@ -27,6 +27,14 @@ import type { HuecoParaRedactar, SeccionesRedactadas } from './redaccion'
   autoguardado, así que se espera la confirmación de la base antes de mostrarla
   en el listado. Una memoria que aparece y desaparece porque el insert falló
   sería peor que medio segundo de espera con el panel todavía abierto.
+
+  Lo que no se espera es la redacción. La fila se guarda primero en
+  `generando` y la tarjeta aparece en el acto; el backend redacta en segundo
+  plano y deja el texto en la fila. Antes se esperaba a la IA y solo entonces
+  se guardaba: el panel quedaba quieto varios minutos y, si la persona cerraba
+  la pestaña, el trabajo se perdía sin dejar rastro de que había existido.
+  Mientras alguna siga en `generando`, se vuelve a leer el listado cada pocos
+  segundos — el mismo canal que usan las conferencias con su `estado`.
 */
 
 export type ValorDeMemorias = {
@@ -42,6 +50,13 @@ export type ValorDeMemorias = {
   ) => Promise<ResultadoMemoria>
   readonly eliminar: (id: string) => Promise<void>
 }
+
+/*
+  Cada cuánto se pregunta por una memoria que se está redactando. Lo bastante
+  seguido para que terminar se note en el acto, y lo bastante espaciado para
+  que una redacción de cinco minutos sean unas decenas de lecturas y no miles.
+*/
+const INTERVALO_DE_SONDEO_MS = 4000
 
 export function useMemorias(idUsuario: string): ValorDeMemorias {
   /* Con algo recordado no hay nada que esperar: se enseña y se relee detrás (ver `memoriasRecordadas.ts`). */
@@ -87,6 +102,56 @@ export function useMemorias(idUsuario: string): ValorDeMemorias {
     }
   }, [memorias, cargando, idUsuario])
 
+  /*
+    Mientras alguna memoria se esté redactando, se vuelve a leer el listado.
+
+    La redacción corre en el backend y escribe en la fila: sin volver a
+    preguntar, la tarjeta se quedaría diciendo "Generando…" para siempre
+    aunque el texto ya estuviera guardado. Se consulta la lista entera y no
+    fila por fila porque es una sola petición y son pocas memorias.
+
+    En cuanto ninguna está `generando`, el intervalo se desmonta y no se
+    vuelve a preguntar: no hay sondeo de fondo en una pantalla en reposo.
+  */
+  useEffect(() => {
+    if (!memorias.some((memoria) => memoria.estado === 'generando')) {
+      return
+    }
+
+    const intervalo = setInterval(() => {
+      void (async () => {
+        const resultado = await listarMemorias()
+
+        if (!resultado.ok) {
+          return
+        }
+
+        setMemorias((anteriores) => {
+          /*
+            El aviso se da aquí y no al pedir la redacción: es cuando de
+            verdad hay texto que leer. Solo para las que estaban a medias en
+            este navegador, para no avisar de una que terminó en otra pestaña.
+          */
+          const terminadas = resultado.datos.filter(
+            (llegada) =>
+              llegada.estado === 'lista' &&
+              anteriores.some(
+                (anterior) => anterior.id === llegada.id && anterior.estado === 'generando',
+              ),
+          )
+
+          if (terminadas.length > 0 && preferenciasActuales().avisarAlTerminar) {
+            avisarTermino(terminadas.length === 1 ? 'Memoria lista' : 'Memorias listas')
+          }
+
+          return resultado.datos
+        })
+      })()
+    }, INTERVALO_DE_SONDEO_MS)
+
+    return () => clearInterval(intervalo)
+  }, [memorias])
+
   const generar = useCallback(
     async (
       idConferencia: string,
@@ -109,24 +174,19 @@ export function useMemorias(idUsuario: string): ValorDeMemorias {
 
       /*
         Sin backend (desarrollo sin `VITE_API_URL`) o sin huecos no hay nada
-        que redactar, y la memoria sale como antes: con los datos que se
-        podían copiar de la conferencia. Con backend, un fallo al redactar
-        —sin API key, sin saldo— detiene la generación: guardar una memoria
-        sin su contenido y enterarse al abrirla sería peor que no guardarla.
+        que redactar, y la memoria nace `lista`: sale como antes, con los
+        datos que se podían copiar de la conferencia.
       */
-      let secciones: SeccionesRedactadas | undefined
+      const vaARedactar = huecos.length > 0 && hayBackend()
 
-      if (huecos.length > 0 && hayBackend()) {
-        const redactadas = await redactarSecciones(idConferencia, huecos, tono)
-
-        if (!redactadas.ok) {
-          return { ok: false, codigo: redactadas.codigo }
-        }
-
-        secciones = redactadas.datos
-      }
-
-      const resultado = crearMemoriaPura(idConferencia, idPlantilla, nombre, idUsuario, secciones)
+      const resultado = crearMemoriaPura(
+        idConferencia,
+        idPlantilla,
+        nombre,
+        idUsuario,
+        undefined,
+        vaARedactar ? 'generando' : 'lista',
+      )
 
       if (!resultado.ok) {
         return resultado
@@ -141,8 +201,27 @@ export function useMemorias(idUsuario: string): ValorDeMemorias {
       /* Al principio, no al final: el listado va de la más reciente a la más antigua. */
       setMemorias((anteriores) => [resultado.memoria, ...anteriores])
 
-      if (secciones !== undefined && preferenciasActuales().avisarAlTerminar) {
-        avisarTermino('Memoria lista')
+      if (!vaARedactar) {
+        return resultado
+      }
+
+      /*
+        La fila ya está y la tarjeta ya se ve, así que el fallo de esta
+        petición no impide que la memoria exista: lo que hace es dejarla
+        `fallida`, que es lo que la tarjeta sabe decir. Devolver el código
+        igualmente permite que el panel lo enseñe sin esperar a releer.
+      */
+      const pedida = await pedirRedaccion(idConferencia, resultado.memoria.id, huecos, tono)
+
+      if (!pedida.ok) {
+        await marcarMemoriaFallida(resultado.memoria.id)
+        setMemorias((anteriores) =>
+          anteriores.map((candidata) =>
+            candidata.id === resultado.memoria.id ? { ...candidata, estado: 'fallida' } : candidata,
+          ),
+        )
+
+        return { ok: false, codigo: pedida.codigo }
       }
 
       return resultado

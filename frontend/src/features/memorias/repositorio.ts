@@ -19,8 +19,9 @@ import type { Memoria } from './data'
   llamada al modelo en cada apertura y leer un texto distinto cada vez; si las
   fichas cambian, la memoria se vuelve a generar a propósito.
 
-  Sin `update`: una memoria no se edita después de generarse. Solo se crea, se
-  lista y se elimina.
+  El único `update` es el del estado: la fila nace `generando` y el backend
+  la deja `lista` con sus secciones cuando termina (o `fallida`). El texto no
+  se edita a mano; lo que se actualiza es en qué punto va su redacción.
 */
 
 const TABLA = 'memorias'
@@ -33,6 +34,7 @@ type FilaDeMemoria = {
   readonly id_dueno: string
   readonly nombre: string
   readonly generada_el: string
+  readonly estado?: string | null
   readonly secciones?: Record<string, string | null> | null
 }
 
@@ -44,6 +46,8 @@ function memoriaDesdeFila(fila: FilaDeMemoria): Memoria {
     idDueno: fila.id_dueno,
     nombre: fila.nombre,
     generadaEl: fila.generada_el,
+    /* Las filas de antes de la columna no traen estado, y su contenido ya está escrito. */
+    estado: fila.estado === 'generando' || fila.estado === 'fallida' ? fila.estado : 'lista',
   }
 
   /* Opcional en el dominio: se omite en vez de viajar como nulo. */
@@ -58,6 +62,7 @@ function filaDesdeMemoria(memoria: Memoria): Record<string, unknown> {
     id_dueno: memoria.idDueno,
     nombre: memoria.nombre,
     generada_el: memoria.generadaEl,
+    estado: memoria.estado,
     secciones: memoria.secciones ?? null,
   }
 }
@@ -86,6 +91,18 @@ export async function crearMemoria(memoria: Memoria): Promise<ResultadoDeConsult
 
 export async function eliminarMemoria(id: string): Promise<ResultadoDeConsulta<null>> {
   const { error } = await supabase.from(TABLA).delete().eq('id', id)
+
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/*
+  Que una redacción falle no puede dejar la fila diciendo `generando`: la
+  interfaz la consultaría sin fin. El backend ya lo hace cuando el fallo es
+  suyo; esto cubre el caso en que la petición no llegó a aceptarse —sin API
+  key, sin red, el servidor dormido— y por tanto nadie más va a tocar la fila.
+*/
+export async function marcarMemoriaFallida(id: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from(TABLA).update({ estado: 'fallida' }).eq('id', id)
 
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }

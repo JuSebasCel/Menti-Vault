@@ -3,5 +3,5 @@
   del módulo importa desde aquí y no desde los archivos sueltos.
 */
 
-export type { Memoria } from './tipos'
+export type { EstadoDeMemoria, Memoria } from './tipos'
 export { MEMORIAS_DE_EJEMPLO } from './memorias.fixture'

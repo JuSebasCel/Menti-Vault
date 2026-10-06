@@ -24,6 +24,7 @@ const MEMORIA = {
   idDueno: FILA.id_dueno,
   nombre: FILA.nombre,
   generadaEl: FILA.generada_el,
+  estado: 'lista' as const,
 }
 
 describe('listarMemorias', () => {
@@ -52,6 +53,7 @@ describe('listarMemorias', () => {
         'idDueno',
         'nombre',
         'generadaEl',
+        'estado',
       ])
     }
   })

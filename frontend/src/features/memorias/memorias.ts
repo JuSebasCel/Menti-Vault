@@ -1,6 +1,6 @@
 import { LARGO_MAXIMO_DE_MEMORIA } from '@/shared/errors'
 import type { CodigoError } from '@/shared/errors'
-import type { Memoria } from './data'
+import type { EstadoDeMemoria, Memoria } from './data'
 
 /*
   Operaciones puras sobre una memoria. Mismo contrato que
@@ -40,6 +40,8 @@ export function crearMemoria(
   nombre: string,
   idDueno: string,
   secciones?: Readonly<Record<string, string | null>>,
+  /* `generando` cuando la va a redactar el backend; `lista` cuando no hay nada que esperar. */
+  estado: EstadoDeMemoria = 'lista',
 ): ResultadoMemoria {
   if (idConferencia.trim().length === 0) {
     return { ok: false, codigo: 'MEM_CONFERENCIA_REQUERIDA' }
@@ -68,6 +70,7 @@ export function crearMemoria(
       idDueno,
       nombre: nombreLimpio,
       generadaEl: new Date().toISOString(),
+      estado,
       ...(secciones === undefined ? {} : { secciones }),
     },
   }

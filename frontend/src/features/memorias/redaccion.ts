@@ -79,18 +79,30 @@ export function huecosPorRevisar(plantilla: Plantilla, secciones: SeccionesRedac
   )
 }
 
-export async function redactarSecciones(
+/*
+  Pide la redacción y no espera el texto: el backend responde 202 y escribe
+  las secciones en la propia fila cuando acaba (ver el encabezado de
+  `api/memorias.py`). Lo que vuelve aquí es solo si la petición se aceptó.
+
+  Antes esto devolvía las secciones y quien llamaba se quedaba esperando. Era
+  una llamada al modelo cuando se escribió; hoy son el rastreo de la
+  transcripción y una lectura por diapositiva, o sea minutos, y la interfaz
+  se quedaba quieta todo ese rato.
+*/
+export async function pedirRedaccion(
   idConferencia: string,
+  idMemoria: string,
   huecos: readonly HuecoParaRedactar[],
   tono = '',
-): Promise<ResultadoDeConsulta<SeccionesRedactadas>> {
-  const resultado = await pedirAlBackend<{ secciones: SeccionesRedactadas }>('/memorias/redactar', {
+): Promise<ResultadoDeConsulta<null>> {
+  const resultado = await pedirAlBackend<{ estado: string }>('/memorias/redactar', {
     id_conferencia: idConferencia,
+    id_memoria: idMemoria,
     huecos,
     tono,
   })
 
-  return resultado.ok ? { ok: true, datos: resultado.datos.secciones } : resultado
+  return resultado.ok ? { ok: true, datos: null } : resultado
 }
 
 export function convertirAPdf(docx: Blob): Promise<ResultadoDeConsulta<Blob>> {

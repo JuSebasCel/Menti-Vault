@@ -39,6 +39,7 @@ const MEMORIA: Memoria = {
   idDueno: '1ba5af9a-f6a2-4504-ab60-1f018c21290a',
   nombre: 'Memoria de la charla de apertura',
   generadaEl: '2026-04-15T10:00:00.000Z',
+  estado: 'lista' as const,
 }
 
 vi.mock('@/shared/supabase/cliente')
