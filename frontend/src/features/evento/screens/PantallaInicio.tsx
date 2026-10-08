@@ -56,7 +56,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         icono: 'rate_review',
         titulo: ponencia.titulo,
         detalle: `En revisión de ${ponencia.ponente}`,
-        ruta: `/ponencias?ver=${ponencia.id}`,
+        ruta: `/ponencias?ver=${ponencia.id}&pestana=aprobacion`,
       })),
     ...ponencias
       .filter((ponencia) => ponencia.comentarioDelPonente !== '')
@@ -64,8 +64,8 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         id: `${ponencia.id}-cambios`,
         icono: 'edit_note',
         titulo: ponencia.titulo,
-        detalle: `${ponencia.ponente.split(' ')[0] ?? ''} pidió un cambio`,
-        ruta: `/ponencias?ver=${ponencia.id}`,
+        detalle: `${ponencia.ponente.split(' ')[0] ?? ''} pidió: «${ponencia.comentarioDelPonente}»`,
+        ruta: `/ponencias?ver=${ponencia.id}&pestana=aprobacion`,
       })),
   ]
 

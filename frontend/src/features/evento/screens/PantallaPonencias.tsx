@@ -6,6 +6,7 @@ import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDe
 import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
 import { useEvento } from '../useEvento'
 import { CargaDelEvento } from '../components/CargaDelEvento'
+import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
@@ -32,6 +33,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [origen, setOrigen] = useState<DOMRect | null>(null)
   const [dia, setDia] = useState<string | null>(null)
   const [estado, setEstado] = useState<'todas' | 'aprobadas' | 'revision'>('todas')
+  const [eje, setEje] = useState<string | null>(null)
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
   const subiendo = parametros.get('subir') === '1'
   const botonSubir = useRef<HTMLButtonElement>(null)
@@ -41,6 +43,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const visibles = datos.ponencias.filter(
     (ponencia) =>
       (dia === null || ponencia.fecha === dia) &&
+      (eje === null || ponencia.eje === eje) &&
       (estado === 'todas' ||
         (estado === 'aprobadas' ? estaAprobada(ponencia.aprobacion) : !estaAprobada(ponencia.aprobacion))),
   )
@@ -59,6 +62,44 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Ponencias">
+        <Filtros
+          grupos={[
+            {
+              clave: 'dia',
+              rotulo: 'Día',
+              icono: 'calendar_today',
+              valor: dia ?? 'todos',
+              porDefecto: 'todos',
+              alCambiar: (valor) => setDia(valor === 'todos' ? null : valor),
+              opciones: [
+                { valor: 'todos', etiqueta: 'Todos' },
+                ...dias.map((uno) => ({ valor: uno, etiqueta: DIA_CORTO.format(new Date(`${uno}T12:00:00`)) })),
+              ],
+            },
+            {
+              clave: 'estado',
+              rotulo: 'Estado',
+              icono: 'task_alt',
+              valor: estado,
+              porDefecto: 'todas',
+              alCambiar: (valor) => setEstado(valor as typeof estado),
+              opciones: [
+                { valor: 'todas', etiqueta: 'Todas' },
+                { valor: 'aprobadas', etiqueta: 'Aprobadas' },
+                { valor: 'revision', etiqueta: 'Por aprobar' },
+              ],
+            },
+            {
+              clave: 'eje',
+              rotulo: 'Eje',
+              icono: 'category',
+              valor: eje ?? 'todos',
+              porDefecto: 'todos',
+              alCambiar: (valor) => setEje(valor === 'todos' ? null : valor),
+              opciones: [{ valor: 'todos', etiqueta: 'Todos' }, ...datos.evento.ejes.map((uno) => ({ valor: uno, etiqueta: uno }))],
+            },
+          ]}
+        />
         <BotonMind ref={botonSubir} icono="upload" onClick={() => cambiar('subir', '1')}>
           Subir ponencia
         </BotonMind>
@@ -77,29 +118,6 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
         <Tarjeta variante="rellena">
           <Cifra rotulo="En revisión" valor={datos.ponencias.filter((ponencia) => ponencia.aprobacion === 'enviada').length} />
         </Tarjeta>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Chip elegido={dia === null} onClick={() => setDia(null)}>
-          Todos los días
-        </Chip>
-        {dias.map((uno) => (
-          <Chip key={uno} elegido={dia === uno} onClick={() => setDia(uno)}>
-            <span className="capitalize">{DIA_CORTO.format(new Date(`${uno}T12:00:00`))}</span>
-          </Chip>
-        ))}
-        <span className="mx-1 w-px self-stretch bg-filete" />
-        {(
-          [
-            ['todas', 'Todas'],
-            ['aprobadas', 'Aprobadas'],
-            ['revision', 'Por aprobar'],
-          ] as const
-        ).map(([valor, etiqueta]) => (
-          <Chip key={valor} elegido={estado === valor} onClick={() => setEstado(valor)}>
-            {etiqueta}
-          </Chip>
-        ))}
       </div>
 
       <div className="tarjeta-borde overflow-hidden rounded-[24px]">
@@ -152,7 +170,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
       </div>
 
       <PanelLateral abierto={abierta !== null} alCerrar={() => ver(null)} origen={origen} titulo={abierta?.titulo ?? 'Ponencia'}>
-        {abierta === null ? null : <DetalleDePonencia ponencia={abierta} datos={datos} />}
+        {abierta === null ? null : <DetalleDePonencia key={abierta.id} ponencia={abierta} datos={datos} inicial={(parametros.get('pestana') as Pestana | null) ?? 'transcripcion'} />}
       </PanelLateral>
 
       {/* El flujo de carga que ya existe: audio o transcripción, con su análisis en segundo plano. */}
@@ -171,8 +189,8 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
 
 type Pestana = 'transcripcion' | 'material' | 'memoria' | 'aprobacion'
 
-function DetalleDePonencia({ ponencia, datos }: { ponencia: Ponencia; datos: DatosDelEvento }): ReactElement {
-  const [pestana, setPestana] = useState<Pestana>('transcripcion')
+function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; datos: DatosDelEvento; inicial: Pestana }): ReactElement {
+  const [pestana, setPestana] = useState<Pestana>(inicial)
   const memoria = datos.memorias.find((una) => una.idConferencia === ponencia.id)
 
   return (
