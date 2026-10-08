@@ -37,7 +37,7 @@ const SECCIONES: readonly Entrada[] = [
 ]
 
 const ACCIONES: readonly Entrada[] = [
-  { etiqueta: 'Invitar ponente', ruta: '/ponentes?invitar=1', icono: 'person_add' },
+  { etiqueta: 'Nuevo ponente', ruta: '/ponentes?invitar=1', icono: 'person_add' },
   { etiqueta: 'Subir ponencia', ruta: '/ponencias?subir=1', icono: 'upload' },
   { etiqueta: 'Nueva memoria', ruta: '/memorias-del-evento?nueva=1', icono: 'note_add' },
   { etiqueta: 'Nuevo artículo', ruta: '/articulos?nueva=1', icono: 'edit_note' },

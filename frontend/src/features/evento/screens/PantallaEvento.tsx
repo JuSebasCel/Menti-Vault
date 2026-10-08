@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { mensajeDeError } from '@/shared/errors'
+import { SelectorDeFecha } from '@/shared/ui'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { BotonMind, Chip, EncabezadoDePagina, Icono, Tarjeta } from '../components/piezas'
 import { actualizarEvento, cambiarEje, direccionDeArchivo, subirFormato } from '../repositorio'
@@ -99,14 +100,25 @@ function Datos({ datos }: { datos: DatosDelEvento }): ReactElement {
         />
       </label>
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <span className="text-xs text-texto-tenue">Empieza</span>
-          <input type="date" value={valores.fechaInicio} onChange={(evento) => setValores({ ...valores, fechaInicio: evento.target.value })} className={CAMPO} />
-        </label>
-        <label className="flex flex-col gap-1.5">
+          <SelectorDeFecha
+            valor={valores.fechaInicio || null}
+            alElegir={(iso) => setValores({ ...valores, fechaInicio: iso })}
+            etiquetaAccesible="Empieza"
+            vacio="Elegir fecha"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
           <span className="text-xs text-texto-tenue">Termina</span>
-          <input type="date" value={valores.fechaFin} onChange={(evento) => setValores({ ...valores, fechaFin: evento.target.value })} className={CAMPO} />
-        </label>
+          <SelectorDeFecha
+            valor={valores.fechaFin || null}
+            alElegir={(iso) => setValores({ ...valores, fechaFin: iso })}
+            etiquetaAccesible="Termina"
+            vacio="Elegir fecha"
+            {...(valores.fechaInicio === '' ? {} : { minimo: valores.fechaInicio })}
+          />
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className="text-xs text-texto-tenue">Lugar</span>
           <input value={valores.lugar} onChange={(evento) => setValores({ ...valores, lugar: evento.target.value })} className={CAMPO} />

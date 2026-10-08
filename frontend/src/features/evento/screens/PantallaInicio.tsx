@@ -1,7 +1,8 @@
 import type { ReactElement, ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useSession } from '@/features/auth/session'
+import { Modal } from '@/shared/ui'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Miniatura } from '../components/MiniaturaDeMemoria'
 import { BotonMind, Chip, EncabezadoDePagina, Icono, Tarjeta, Vacio } from '../components/piezas'
@@ -35,6 +36,8 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   const dias = useMemo(() => [...new Set(ponencias.map((ponencia) => ponencia.fecha))].sort(), [ponencias])
   const [dia, setDia] = useState(dias[0] ?? '')
+  const [creando, setCreando] = useState(false)
+  const botonCrear = useRef<HTMLButtonElement>(null)
 
   const porAprobar = ponencias.filter((ponencia) => !estaAprobada(ponencia.aprobacion)).length
   const sinConsentir = ponentes.filter((ponente) => ponente.consentimiento !== 'aceptado').length
@@ -73,7 +76,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="shrink-0 pb-2">
         <EncabezadoDePagina titulo="Inicio">
-          <BotonMind icono="add" onClick={() => void navegar('/agenda?nueva=1')}>
+          <BotonMind ref={botonCrear} icono="add" onClick={() => setCreando(true)}>
             Crear
           </BotonMind>
         </EncabezadoDePagina>
@@ -196,6 +199,34 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
           </div>
         </Columna>
       </div>
+
+      {/* El menú de crear de la referencia: nace del botón y lleva a cada flujo. */}
+      <Modal abierto={creando} alCerrar={() => setCreando(false)} titulo="Crear" anclaje="disparador" anclaEn={botonCrear} ancho="angosto">
+        <div className="flex flex-col gap-1 pb-2">
+          {(
+            [
+              ['calendar_add_on', 'Nueva sesión', '/agenda?nueva=1'],
+              ['person_add', 'Nuevo ponente', '/ponentes?invitar=1'],
+              ['upload', 'Subir ponencia', '/ponencias?subir=1'],
+              ['note_add', 'Nueva memoria', '/memorias-del-evento?nueva=1'],
+              ['edit_note', 'Nuevo artículo', '/articulos?nueva=1'],
+            ] as const
+          ).map(([icono, etiqueta, ruta]) => (
+            <button
+              key={ruta}
+              type="button"
+              onClick={() => {
+                setCreando(false)
+                void navegar(ruta)
+              }}
+              className="flex h-12 cursor-pointer items-center gap-3 rounded-[24px] px-4 text-left text-[15px] transition-colors hover:bg-panel"
+            >
+              <Icono nombre={icono} className="text-xl" />
+              {etiqueta}
+            </button>
+          ))}
+        </div>
+      </Modal>
     </div>
   )
 }

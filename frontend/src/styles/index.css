@@ -1425,3 +1425,12 @@
     animation: none;
   }
 }
+
+/*
+  Barras de desplazamiento finas y del color del tema. Las del sistema salían
+  blancas sobre el oscuro y partían las tarjetas del inicio en dos.
+*/
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bitacora-filete-fuerte) transparent;
+}

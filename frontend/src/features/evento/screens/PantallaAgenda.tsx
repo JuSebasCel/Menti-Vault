@@ -271,7 +271,8 @@ function VistaPorDias({
       </div>
 
       {dias.map((dia, indiceDia) => (
-        <div key={dia} className="relative" style={{ height: horas.length * ALTO_DE_HORA }}>
+        /* Cada columna es su propia capa (la anima la entrada), así que la que se mira sube entera para que su detalle no quede debajo de la vecina. */
+        <div key={dia} className="relative hover:z-10" style={{ height: horas.length * ALTO_DE_HORA }}>
           {horas.map((hora, indice) => (
             <div key={hora} className="absolute inset-x-0 rounded-[16px] bg-panel" style={{ top: indice * ALTO_DE_HORA + 2, height: ALTO_DE_HORA - 4 }} />
           ))}
