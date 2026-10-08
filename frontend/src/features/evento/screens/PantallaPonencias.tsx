@@ -1,7 +1,10 @@
 import type { ReactElement } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { ModalDeCarga } from '@/features/conferencias/components'
 import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDeAudio'
+import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
+import { useEvento } from '../useEvento'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
@@ -30,6 +33,9 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [dia, setDia] = useState<string | null>(null)
   const [estado, setEstado] = useState<'todas' | 'aprobadas' | 'revision'>('todas')
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
+  const subiendo = parametros.get('subir') === '1'
+  const botonSubir = useRef<HTMLButtonElement>(null)
+  const { invalidar } = useEvento()
 
   const dias = useMemo(() => [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort(), [datos.ponencias])
   const visibles = datos.ponencias.filter(
@@ -39,19 +45,24 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
         (estado === 'aprobadas' ? estaAprobada(ponencia.aprobacion) : !estaAprobada(ponencia.aprobacion))),
   )
 
-  const ver = (id: string | null): void => {
+  const cambiar = (clave: string, valor: string | null): void => {
     const siguientes = new URLSearchParams(parametros)
-    if (id === null) {
-      siguientes.delete('ver')
+    if (valor === null) {
+      siguientes.delete(clave)
     } else {
-      siguientes.set('ver', id)
+      siguientes.set(clave, valor)
     }
     setParametros(siguientes, { replace: true })
   }
+  const ver = (id: string | null): void => cambiar('ver', id)
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoDePagina titulo="Ponencias" />
+      <EncabezadoDePagina titulo="Ponencias">
+        <BotonMind ref={botonSubir} icono="upload" onClick={() => cambiar('subir', '1')}>
+          Subir ponencia
+        </BotonMind>
+      </EncabezadoDePagina>
 
       <div className="entrar-escalonado grid grid-cols-4 gap-2">
         <Tarjeta variante="rellena">
@@ -143,11 +154,22 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
       <PanelLateral abierto={abierta !== null} alCerrar={() => ver(null)} origen={origen} titulo={abierta?.titulo ?? 'Ponencia'}>
         {abierta === null ? null : <DetalleDePonencia ponencia={abierta} datos={datos} />}
       </PanelLateral>
+
+      {/* El flujo de carga que ya existe: audio o transcripción, con su análisis en segundo plano. */}
+      <ModalDeCarga
+        abierto={subiendo}
+        alCerrar={() => cambiar('subir', null)}
+        anclaEn={botonSubir}
+        alCargar={() => {
+          cambiar('subir', null)
+          invalidar()
+        }}
+      />
     </div>
   )
 }
 
-type Pestana = 'transcripcion' | 'memoria' | 'aprobacion'
+type Pestana = 'transcripcion' | 'material' | 'memoria' | 'aprobacion'
 
 function DetalleDePonencia({ ponencia, datos }: { ponencia: Ponencia; datos: DatosDelEvento }): ReactElement {
   const [pestana, setPestana] = useState<Pestana>('transcripcion')
@@ -174,6 +196,9 @@ function DetalleDePonencia({ ponencia, datos }: { ponencia: Ponencia; datos: Dat
         <Chip elegido={pestana === 'transcripcion'} onClick={() => setPestana('transcripcion')}>
           Transcripción
         </Chip>
+        <Chip elegido={pestana === 'material'} onClick={() => setPestana('material')}>
+          Material
+        </Chip>
         <Chip elegido={pestana === 'memoria'} onClick={() => setPestana('memoria')}>
           Memoria
         </Chip>
@@ -183,6 +208,7 @@ function DetalleDePonencia({ ponencia, datos }: { ponencia: Ponencia; datos: Dat
       </div>
 
       {pestana === 'transcripcion' ? <Transcripcion ponencia={ponencia} /> : null}
+      {pestana === 'material' ? <MaterialDeApoyo idDueno={ponencia.idDueno} idConferencia={ponencia.id} /> : null}
       {pestana === 'memoria' ? (
         memoria?.archivoPdf == null ? (
           <Tarjeta>
@@ -305,9 +331,14 @@ function Aprobacion({ ponencia }: { ponencia: Ponencia }): ReactElement {
       </ol>
 
       {ponencia.comentarioDelPonente === '' ? null : (
-        <div className="flex flex-col gap-1 rounded-2xl bg-[var(--mind-tonal)] px-4 py-3 [color:var(--mind-tonal-texto)]">
-          <span className="text-sm font-medium">Lo que pidió corregir</span>
-          <span>{ponencia.comentarioDelPonente}</span>
+        <div className="flex flex-col gap-2 rounded-[20px] bg-[var(--tono-azul)] px-5 py-4 [color:var(--tono-azul-texto)]">
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <Icono nombre="edit_note" className="text-lg" /> Cambio que pidió el ponente
+          </span>
+          <span className="text-[15px] leading-relaxed">«{ponencia.comentarioDelPonente}»</span>
+          <span className="flex items-center gap-1.5 text-sm opacity-80">
+            <Icono nombre="check_circle" className="text-base" /> Aplicado en la memoria: por eso queda aprobada con ajustes.
+          </span>
         </div>
       )}
 

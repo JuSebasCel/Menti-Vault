@@ -86,6 +86,8 @@ export type Memoria = {
   readonly nombre: string
   readonly alcance: 'ponencia' | 'agrupacion' | 'evento'
   readonly idConferencia: string | null
+  /** El eje de una memoria por eje; null en las de ponencia y la del evento. */
+  readonly agrupacion: string | null
   readonly archivoPdf: string | null
   readonly archivoDocx: string | null
   readonly generadaEl: string

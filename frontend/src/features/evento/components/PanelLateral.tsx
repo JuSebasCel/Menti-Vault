@@ -24,6 +24,8 @@ export type PropsPanelLateral = {
   origen: DOMRect | null
   titulo: string
   children: ReactNode
+  /** `amplio` para lo que se lee a dos columnas, como un artículo con sus evidencias. */
+  ancho?: 'normal' | 'amplio'
 }
 
 const DURACION_ABRIR = 420
@@ -43,7 +45,7 @@ function desde(origen: DOMRect | null, caja: DOMRect): Keyframe {
   }
 }
 
-export function PanelLateral({ abierto, alCerrar, origen, titulo, children }: PropsPanelLateral): ReactElement | null {
+export function PanelLateral({ abierto, alCerrar, origen, titulo, children, ancho = 'normal' }: PropsPanelLateral): ReactElement | null {
   const [montado, setMontado] = useState(abierto)
   const ventana = useRef<HTMLDivElement>(null)
   const velo = useRef<HTMLDivElement>(null)
@@ -110,7 +112,7 @@ export function PanelLateral({ abierto, alCerrar, origen, titulo, children }: Pr
         aria-modal="true"
         aria-label={titulo}
         style={{ transformOrigin: 'top left' }}
-        className="absolute top-2 right-2 bottom-2 flex w-[min(800px,calc(100vw-260px))] flex-col overflow-hidden rounded-[32px] bg-fondo shadow-[0_0_0_1px_var(--bitacora-filete)]"
+        className={`absolute top-2 right-2 bottom-2 flex ${ancho === 'amplio' ? 'w-[min(1180px,calc(100vw-250px))]' : 'w-[min(800px,calc(100vw-260px))]'} flex-col overflow-hidden rounded-[32px] bg-fondo shadow-[0_0_0_1px_var(--bitacora-filete)]`}
       >
         <div className="flex shrink-0 items-center px-4 pt-4">
           <button

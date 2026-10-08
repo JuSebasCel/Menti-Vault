@@ -97,6 +97,7 @@ function mapearMemoria(fila: Fila): Memoria {
     nombre: texto(fila['nombre']),
     alcance: (texto(fila['alcance']) || 'ponencia') as Memoria['alcance'],
     idConferencia: textoONulo(fila['id_conferencia']),
+    agrupacion: textoONulo(fila['agrupacion']),
     archivoPdf: textoONulo(fila['archivo_pdf']),
     archivoDocx: textoONulo(fila['archivo_docx']),
     generadaEl: texto(fila['generada_el']),

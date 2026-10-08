@@ -1,10 +1,10 @@
 import type { ReactElement, ReactNode } from 'react'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDeAudio'
 import { Modal } from '@/shared/ui'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
+import { ReproductorDeCita } from '../components/ReproductorDeCita'
 import { BotonMind, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
 import { fechaYHora, minuto } from '../formato'
 import type { DatosDelEvento, Enfoque, Evidencia, Produccion } from '../tipos'
@@ -83,7 +83,7 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
         ))}
       </div>
 
-      <PanelLateral abierto={abierta !== null} alCerrar={() => cambiar('ver', null)} origen={origen} titulo={abierta?.titulo ?? 'Artículo'}>
+      <PanelLateral abierto={abierta !== null} alCerrar={() => cambiar('ver', null)} origen={origen} titulo={abierta?.titulo ?? 'Artículo'} ancho="amplio">
         {abierta === null ? null : <Articulo produccion={abierta} datos={datos} />}
       </PanelLateral>
 
@@ -291,76 +291,77 @@ function apellidos(nombre: string): string {
 
 function Articulo({ produccion, datos }: { produccion: Produccion; datos: DatosDelEvento }): ReactElement {
   const porClave = new Map(produccion.evidencias.map((evidencia) => [evidencia.clave, evidencia]))
-  const [sonando, setSonando] = useState<Evidencia | null>(null)
+  const [sonando, setSonando] = useState<{ evidencia: Evidencia; ancla: DOMRect } | null>(null)
+  const idDueno = datos.ponencias[0]?.idDueno ?? ''
+  const escuchar = (evidencia: Evidencia, elemento: HTMLElement): void => {
+    setSonando({ evidencia, ancla: elemento.getBoundingClientRect() })
+    document.getElementById(`evidencia-${evidencia.clave}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }
 
   return (
-    <div className="entrar-escalonado flex flex-col gap-2 pt-2">
-      <Tarjeta variante="rellena" className="flex flex-col gap-4">
-        <span className="text-sm text-texto-tenue">Artículo de reflexión · {datos.evento.nombre}</span>
-        <span className="text-[28px] leading-tight font-semibold">{produccion.titulo}</span>
-        <span className="flex flex-wrap gap-2">
-          <Estado etiqueta={`${new Set(produccion.evidencias.map((evidencia) => evidencia.ponente)).size} ponentes citados`} tono="azul" />
-          <Estado etiqueta={`${produccion.evidencias.length} citas verificadas contra la transcripción`} tono="verde" />
-        </span>
-      </Tarjeta>
-
-      {sonando === null ? null : (
-        <div className="sticky top-0 z-10 flex flex-col gap-2 rounded-[24px] bg-panel p-4 shadow-[0_0_0_1px_var(--bitacora-filete)]">
-          <span className="flex items-center justify-between gap-3 text-sm">
-            <span>
-              <span className="font-medium">{sonando.ponente}</span>
-              <span className="text-texto-tenue"> · min. {minuto(sonando.segundo)}</span>
-            </span>
-            <button type="button" onClick={() => setSonando(null)} className="cursor-pointer text-texto-tenue hover:text-texto" aria-label="Cerrar audio">
-              <Icono nombre="close" className="text-lg" />
-            </button>
+    <div className="entrar-escalonado grid min-h-0 grid-cols-[minmax(0,1fr)_340px] gap-2 pt-2">
+      <div className="flex min-w-0 flex-col gap-2">
+        <Tarjeta variante="rellena" className="flex flex-col gap-4">
+          <span className="text-sm text-texto-tenue">Artículo de reflexión · {datos.evento.nombre}</span>
+          <span className="text-[28px] leading-tight font-semibold">{produccion.titulo}</span>
+          <span className="flex flex-wrap gap-2">
+            <Estado etiqueta={`${new Set(produccion.evidencias.map((evidencia) => evidencia.ponente)).size} ponentes citados`} tono="azul" />
+            <Estado etiqueta={`${produccion.evidencias.length} citas verificadas`} tono="verde" />
           </span>
-          <FragmentoDeAudio
-            idDueno={datos.ponencias[0]?.idDueno ?? ''}
-            idConferencia={sonando.idConferencia}
-            inicio={sonando.segundo}
-            fin={sonando.segundo + 12}
-          />
-        </div>
-      )}
+        </Tarjeta>
 
-      <article className="flex flex-col gap-6 px-4 py-4">
-        {produccion.secciones.map((seccion) => (
-          <section key={seccion.titulo} className="flex flex-col gap-3">
-            <h3 className="text-xl font-semibold">{seccion.titulo}</h3>
-            {seccion.texto.split('\n\n').map((parrafo, indice) => (
-              <p key={indice} className="text-[16px] leading-[1.75] text-texto">
-                {conCitas(parrafo, porClave, setSonando)}
-              </p>
-            ))}
-          </section>
-        ))}
-      </article>
+        <article className="flex flex-col gap-6 px-4 py-4">
+          {produccion.secciones.map((seccion) => (
+            <section key={seccion.titulo} className="flex flex-col gap-3">
+              <h3 className="text-xl font-semibold">{seccion.titulo}</h3>
+              {seccion.texto.split('\n\n').map((parrafo, indice) => (
+                <p key={indice} className="text-[16px] leading-[1.75] text-texto">
+                  {conCitas(parrafo, porClave, escuchar, sonando?.evidencia.clave ?? null)}
+                </p>
+              ))}
+            </section>
+          ))}
+        </article>
+      </div>
 
-      <Tarjeta className="flex flex-col gap-3">
-        <span className="text-xl font-semibold">Evidencias</span>
-        <ol className="flex flex-col gap-2">
+      {/* Las evidencias al lado del texto: se comprueba sin perder el renglón. */}
+      <aside className="sticky top-0 flex max-h-[calc(100dvh-96px)] min-h-0 flex-col gap-3 self-start rounded-[24px] bg-panel p-3">
+        <span className="px-2 pt-2 text-xl font-semibold">Evidencias</span>
+        <ol className="flex min-h-0 flex-col gap-2 overflow-y-auto">
           {produccion.evidencias.map((evidencia) => (
-            <li key={evidencia.clave} className="flex items-start gap-3 rounded-2xl bg-panel px-4 py-3">
-              <span className="mt-0.5 shrink-0 font-mono text-xs text-texto-tenue">{evidencia.clave}</span>
+            <li
+              key={evidencia.clave}
+              id={`evidencia-${evidencia.clave}`}
+              className={`flex items-start gap-3 rounded-[16px] px-3 py-3 transition-colors ${sonando?.evidencia.clave === evidencia.clave ? 'bg-acento text-acento-contraste' : 'bg-fondo'}`}
+            >
               <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="text-[15px]">«{evidencia.texto}»</span>
-                <span className="text-sm text-texto-tenue">
-                  {evidencia.ponente} · min. {minuto(evidencia.segundo)}
+                <span className="text-[14px] leading-snug">«{evidencia.texto}»</span>
+                <span className="text-xs opacity-70">
+                  {apellidos(evidencia.ponente)} · min. {minuto(evidencia.segundo)}
                 </span>
               </span>
               <button
                 type="button"
-                onClick={() => setSonando(evidencia)}
-                aria-label="Escuchar"
-                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-fondo transition-colors hover:bg-acento hover:text-acento-contraste"
+                onClick={(evento) => escuchar(evidencia, evento.currentTarget)}
+                aria-label={`Escuchar ${evidencia.clave}`}
+                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--mind-neutro)] text-texto transition-colors hover:bg-acento hover:text-acento-contraste"
               >
                 <Icono nombre="play_arrow" className="text-lg" />
               </button>
             </li>
           ))}
         </ol>
-      </Tarjeta>
+      </aside>
+
+      {sonando === null ? null : (
+        <ReproductorDeCita
+          key={sonando.evidencia.clave}
+          evidencia={sonando.evidencia}
+          idDueno={idDueno}
+          ancla={sonando.ancla}
+          alCerrar={() => setSonando(null)}
+        />
+      )}
     </div>
   )
 }
@@ -368,12 +369,13 @@ function Articulo({ produccion, datos }: { produccion: Produccion; datos: DatosD
 /*
   Cambia cada `{E-n}` del texto por la cita literal entre comillas y su
   referencia (apellidos, minuto). La referencia es un botón: al pasar el
-  ratón enseña el contexto, y al pulsarlo suena el tramo de la grabación.
+  ratón enseña la frase verificada, y al pulsarla suena el tramo justo ahí.
 */
 function conCitas(
   parrafo: string,
   porClave: Map<string, Evidencia>,
-  alEscuchar: (evidencia: Evidencia) => void,
+  alEscuchar: (evidencia: Evidencia, elemento: HTMLElement) => void,
+  activa: string | null,
 ): ReactNode {
   return parrafo.split(/(\{E-\d+\})/).map((trozo, indice) => {
     const clave = /^\{(E-\d+)\}$/.exec(trozo)?.[1]
@@ -384,24 +386,15 @@ function conCitas(
     return (
       <Fragment key={indice}>
         «{evidencia.texto.replace(/[.]$/, '')}»{' '}
-        <span className="group relative inline-block">
-          <button
-            type="button"
-            onClick={() => alEscuchar(evidencia)}
-            className="cursor-pointer rounded-full bg-acento-tenue px-2 py-0.5 text-[13px] whitespace-nowrap text-texto transition-colors hover:bg-acento hover:text-acento-contraste"
-          >
-            ({apellidos(evidencia.ponente)}, min. {minuto(evidencia.segundo)})
-          </button>
-          <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-80 -translate-x-1/2 translate-y-1 rounded-2xl bg-acento p-4 text-left text-sm leading-relaxed text-acento-contraste opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-            <span className="mb-2 flex items-center gap-1.5 text-xs opacity-70">
-              <Icono nombre="verified" className="text-sm" /> Literal en la transcripción · {evidencia.clave}
-            </span>
-            «{evidencia.texto}»
-            <span className="mt-2 block text-xs opacity-70">
-              {evidencia.ponente} · minuto {minuto(evidencia.segundo)} · pulsa para escuchar
-            </span>
-          </span>
-        </span>
+        <button
+          type="button"
+          title={`Literal en la transcripción · ${evidencia.ponente}, minuto ${minuto(evidencia.segundo)}`}
+          onClick={(evento) => alEscuchar(evidencia, evento.currentTarget)}
+          className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 align-baseline text-[13px] whitespace-nowrap transition-colors ${activa === evidencia.clave ? 'bg-acento text-acento-contraste' : 'bg-[var(--tono-azul)] [color:var(--tono-azul-texto)] hover:bg-acento hover:text-acento-contraste'}`}
+        >
+          <Icono nombre="graphic_eq" className="text-sm" />
+          {apellidos(evidencia.ponente)}, min. {minuto(evidencia.segundo)}
+        </button>
       </Fragment>
     )
   })
