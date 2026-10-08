@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { useEvento } from '@/features/evento/useEvento'
+import { anclaDelDock } from '@/features/evento/anclaDelDock'
 import { elegirEvento } from '@/features/evento/eventoElegido'
 import { crearEvento, listarEventos } from '@/features/evento/repositorio'
 import type { ResumenDeEvento } from '@/features/evento/tipos'
@@ -38,7 +39,7 @@ const SECCIONES: readonly Entrada[] = [
 
 const ACCIONES: readonly Entrada[] = [
   { etiqueta: 'Nuevo ponente', ruta: '/ponentes?invitar=1', icono: 'person_add' },
-  { etiqueta: 'Subir ponencia', ruta: '/ponencias?subir=1', icono: 'upload' },
+  { etiqueta: 'Subir grabación', ruta: '/ponencias?subir=1', icono: 'upload' },
   { etiqueta: 'Nueva memoria', ruta: '/memorias-del-evento?nueva=1', icono: 'note_add' },
   { etiqueta: 'Nuevo artículo', ruta: '/articulos?nueva=1', icono: 'edit_note' },
 ]
@@ -50,7 +51,7 @@ function Item({
 }: {
   entrada: Entrada
   activa: boolean
-  alPulsar?: () => void
+  alPulsar?: (boton: HTMLElement) => void
 }): ReactElement {
   const contenido = (
     <>
@@ -68,7 +69,7 @@ function Item({
       {contenido}
     </NavLink>
   ) : (
-    <button type="button" className="item-mind" data-activo={false} onClick={alPulsar}>
+    <button type="button" className="item-mind" data-activo={false} onClick={(evento) => alPulsar(evento.currentTarget)}>
       {contenido}
     </button>
   )
@@ -111,7 +112,14 @@ export function ShellDelEvento(): ReactElement {
           <ul className="flex flex-col">
             {ACCIONES.map((accion) => (
               <li key={accion.ruta}>
-                <Item entrada={accion} activa={false} alPulsar={() => void navegar(accion.ruta)} />
+                <Item
+                entrada={accion}
+                activa={false}
+                alPulsar={(boton) => {
+                  anclaDelDock.current = boton
+                  void navegar(`${accion.ruta}&desde=dock`)
+                }}
+              />
               </li>
             ))}
           </ul>

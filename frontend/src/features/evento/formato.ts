@@ -112,3 +112,30 @@ export function minutosEntre(inicio: string, fin: string): number {
   }
   return aMinutos(fin) - aMinutos(inicio)
 }
+
+/*
+  En qué punto está una sesión respecto a ahora: lo que el organizador quiere
+  saber al mirar la lista es si ya la vio o todavía no. Se compara con la
+  hora de fin, para que una sesión en curso cuente como de hoy y no como
+  ocurrida.
+*/
+export type Momento = 'ocurrio' | 'hoy' | 'proxima' | 'sin-hora'
+
+export function momentoDe(ponencia: { fecha: string; horaInicio: string | null; horaFin: string | null }, ahora = new Date()): Momento {
+  if (ponencia.horaInicio === null || ponencia.fecha === '') {
+    return 'sin-hora'
+  }
+  const fin = new Date(`${ponencia.fecha}T${ponencia.horaFin ?? ponencia.horaInicio}:00`)
+  const hoy = ahora.toISOString().slice(0, 10) === ponencia.fecha
+  if (fin.getTime() < ahora.getTime()) {
+    return 'ocurrio'
+  }
+  return hoy ? 'hoy' : 'proxima'
+}
+
+export const MOMENTO: Record<Momento, { etiqueta: string; tono: Tono }> = {
+  ocurrio: { etiqueta: 'Ya ocurrió', tono: 'verde' },
+  hoy: { etiqueta: 'Hoy', tono: 'ambar' },
+  proxima: { etiqueta: 'Por ocurrir', tono: 'azul' },
+  'sin-hora': { etiqueta: 'Sin hora', tono: 'gris' },
+}

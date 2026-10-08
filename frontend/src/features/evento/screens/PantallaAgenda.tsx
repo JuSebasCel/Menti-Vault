@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { mensajeDeError } from '@/shared/errors'
 import { Modal } from '@/shared/ui'
+import { anclaDelDock } from '../anclaDelDock'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
@@ -80,6 +81,7 @@ const DIA_DE_LA_SEMANA = new Intl.DateTimeFormat('es-CO', { weekday: 'short' })
 
 function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
+  const desdeDock = parametros.get('desde') === 'dock'
   const [vista, setVistaEnEstado] = useState<'dias' | 'lista'>(vistaRecordada)
   const [eje, setEje] = useState('todos')
   const [tipo, setTipo] = useState('todos')
@@ -109,6 +111,7 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
     const siguientes = new URLSearchParams(parametros)
     if (valor === null) {
       siguientes.delete(clave)
+      siguientes.delete('desde')
     } else {
       siguientes.set(clave, valor)
     }
@@ -225,7 +228,9 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
         abierto={creando}
         alCerrar={() => cambiar('nueva', null)}
         titulo="Nueva sesión"
-        anclaEn={botonNueva}
+        anclaEn={desdeDock ? anclaDelDock : botonNueva}
+        anclaje="disparador"
+        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})}
         ancho="normal"
         cerrarAlPulsarElVelo={false}
       >

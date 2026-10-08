@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Modal } from '@/shared/ui'
+import { anclaDelDock } from '../anclaDelDock'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
@@ -28,7 +29,6 @@ export function PantallaMemoriasDelEvento(): ReactElement {
 function requisitos(ponencia: Ponencia, datos: DatosDelEvento): { texto: string; ok: boolean }[] {
   const ponente = datos.ponentes.find((uno) => mismoPonente(ponencia.ponente, uno.nombre))
   return [
-    { texto: 'Transcrita', ok: ponencia.tieneTranscripcion },
     { texto: 'Autorizada por su ponente', ok: ponente?.consentimiento === 'aceptado' && ponente.usos.memoria === true },
     { texto: 'Texto aprobado', ok: estaAprobada(ponencia.aprobacion) },
   ]
@@ -36,6 +36,7 @@ function requisitos(ponencia: Ponencia, datos: DatosDelEvento): { texto: string;
 
 function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
+  const desdeDock = parametros.get('desde') === 'dock'
   const [abierta, setAbierta] = useState<Memoria | null>(null)
   const [origen, setOrigen] = useState<DOMRect | null>(null)
   const botonNueva = useRef<HTMLButtonElement>(null)
@@ -57,6 +58,7 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
       siguientes.set('nueva', '1')
     } else {
       siguientes.delete('nueva')
+      siguientes.delete('desde')
     }
     setParametros(siguientes, { replace: true })
   }
@@ -149,7 +151,9 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
         )}
       </PanelLateral>
 
-      <Modal abierto={creando} alCerrar={() => cambiarCreando(false)} titulo="Nueva memoria" anclaEn={botonNueva} ancho="normal">
+      <Modal abierto={creando} alCerrar={() => cambiarCreando(false)} titulo="Nueva memoria" anclaEn={desdeDock ? anclaDelDock : botonNueva}
+        anclaje="disparador"
+        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})} ancho="normal">
         <NuevaMemoria
           datos={datos}
           alAbrir={(memoria) => {
@@ -236,7 +240,7 @@ function NuevaMemoria({ datos, alAbrir }: { datos: DatosDelEvento; alAbrir: (mem
 
       {alcance === 'ponencia' ? (
         <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-          {datos.ponencias.map((ponencia) => {
+          {datos.ponencias.filter((ponencia) => ponencia.tieneTranscripcion).map((ponencia) => {
             const faltan = requisitos(ponencia, datos).filter((requisito) => !requisito.ok)
             return (
               <li key={ponencia.id}>

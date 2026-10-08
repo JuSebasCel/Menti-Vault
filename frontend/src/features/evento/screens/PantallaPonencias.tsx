@@ -12,7 +12,7 @@ import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { APROBACION, duracion, estaAprobada, fecha, fechaYHora, minuto } from '../formato'
+import { APROBACION, MOMENTO, duracion, fecha, fechaYHora, minuto, momentoDe } from '../formato'
 import type { DatosDelEvento, Ponencia, Segmento } from '../tipos'
 
 /*
@@ -46,7 +46,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
       (dia === null || ponencia.fecha === dia) &&
       (eje === null || ponencia.eje === eje) &&
       (estado === 'todas' ||
-        (estado === 'aprobadas' ? estaAprobada(ponencia.aprobacion) : !estaAprobada(ponencia.aprobacion))),
+        (estado === 'aprobadas' ? momentoDe(ponencia) === 'ocurrio' : ['hoy', 'proxima'].includes(momentoDe(ponencia)))),
   )
 
   const cambiar = (clave: string, valor: string | null): void => {
@@ -86,8 +86,8 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
               alCambiar: (valor) => setEstado(valor as typeof estado),
               opciones: [
                 { valor: 'todas', etiqueta: 'Todas' },
-                { valor: 'aprobadas', etiqueta: 'Aprobadas' },
-                { valor: 'revision', etiqueta: 'Por aprobar' },
+                { valor: 'aprobadas', etiqueta: 'Ya ocurrieron' },
+                { valor: 'revision', etiqueta: 'Por ocurrir' },
               ],
             },
             {
@@ -108,16 +108,19 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
 
       <div className="entrar-escalonado grid grid-cols-4 gap-2">
         <Tarjeta variante="rellena">
-          <Cifra rotulo="Totales" valor={datos.ponencias.length} />
+          <Cifra rotulo="Sesiones" valor={datos.ponencias.length} />
         </Tarjeta>
         <Tarjeta variante="rellena">
-          <Cifra rotulo="Transcritas" valor={datos.ponencias.filter((ponencia) => ponencia.tieneTranscripcion).length} />
+          <Cifra rotulo="Ya ocurrieron" valor={datos.ponencias.filter((ponencia) => momentoDe(ponencia) === 'ocurrio').length} />
         </Tarjeta>
         <Tarjeta variante="rellena">
-          <Cifra rotulo="Aprobadas" valor={datos.ponencias.filter((ponencia) => estaAprobada(ponencia.aprobacion)).length} />
+          <Cifra rotulo="Por ocurrir" valor={datos.ponencias.filter((ponencia) => ['hoy', 'proxima'].includes(momentoDe(ponencia))).length} />
         </Tarjeta>
         <Tarjeta variante="rellena">
-          <Cifra rotulo="En revisión" valor={datos.ponencias.filter((ponencia) => ponencia.aprobacion === 'enviada').length} />
+          <Cifra
+            rotulo="Con memoria"
+            valor={datos.ponencias.filter((ponencia) => datos.memorias.some((memoria) => memoria.idConferencia === ponencia.id)).length}
+          />
         </Tarjeta>
       </div>
 
@@ -139,7 +142,10 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 <td className="max-w-md px-3 py-2.5">
                   <span className="flex flex-col">
                     <span className="truncate">{ponencia.titulo}</span>
-                    <span className="truncate text-texto-tenue">{ponencia.ponente}</span>
+                    <span className="truncate text-texto-tenue">
+                      {ponencia.ponente}
+                      {ponencia.tieneTranscripcion ? '' : ' · sin grabación todavía'}
+                    </span>
                   </span>
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">
@@ -149,7 +155,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 <td className="px-3 py-2.5 whitespace-nowrap">{duracion(ponencia.duracionEnSegundos)}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap">{ponencia.eje || '—'}</td>
                 <td className="px-3 py-2.5">
-                  <Estado {...APROBACION[ponencia.aprobacion]} />
+                  <Estado {...MOMENTO[momentoDe(ponencia)]} />
                 </td>
                 <td className="px-3 py-2.5 text-right">
                   <button

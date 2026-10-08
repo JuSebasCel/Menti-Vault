@@ -17,12 +17,12 @@ export type EstadoDeAprobacion = 'sin-enviar' | 'enviada' | 'aprobada' | 'con-ca
   otro.
 */
 export const USOS_DEL_CONSENTIMIENTO = [
-  { clave: 'grabacion', etiqueta: 'Grabar la sesión' },
-  { clave: 'transcripcion', etiqueta: 'Transcribirla' },
-  { clave: 'memoria', etiqueta: 'Incluirla en la memoria del evento' },
-  { clave: 'produccion_academica', etiqueta: 'Citarla en producción académica' },
-  { clave: 'ia_de_terceros', etiqueta: 'Procesarla con IA de terceros' },
-  { clave: 'redes', etiqueta: 'Difundir citas en las redes del evento' },
+  { clave: 'grabacion', etiqueta: 'Que grabemos su sesión' },
+  { clave: 'transcripcion', etiqueta: 'Que la transcribamos' },
+  { clave: 'memoria', etiqueta: 'Que la incluyamos en la memoria del evento' },
+  { clave: 'produccion_academica', etiqueta: 'Que la citemos en artículos académicos' },
+  { clave: 'ia_de_terceros', etiqueta: 'Que la procesemos con inteligencia artificial' },
+  { clave: 'redes', etiqueta: 'Que publiquemos citas y fotos suyas en redes' },
 ] as const
 
 export type UsoDelConsentimiento = (typeof USOS_DEL_CONSENTIMIENTO)[number]['clave']

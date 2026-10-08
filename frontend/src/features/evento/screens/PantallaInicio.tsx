@@ -207,7 +207,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
             [
               ['calendar_add_on', 'Nueva sesión', '/agenda?nueva=1'],
               ['person_add', 'Nuevo ponente', '/ponentes?invitar=1'],
-              ['upload', 'Subir ponencia', '/ponencias?subir=1'],
+              ['upload', 'Subir grabación', '/ponencias?subir=1'],
               ['note_add', 'Nueva memoria', '/memorias-del-evento?nueva=1'],
               ['edit_note', 'Nuevo artículo', '/articulos?nueva=1'],
             ] as const
@@ -219,9 +219,11 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
                 setCreando(false)
                 void navegar(ruta)
               }}
-              className="flex h-12 cursor-pointer items-center gap-3 rounded-[24px] px-4 text-left text-[15px] transition-colors hover:bg-panel"
+              className="flex h-16 cursor-pointer items-center gap-4 rounded-[24px] px-3 text-left text-base font-medium transition-colors hover:bg-panel"
             >
-              <Icono nombre={icono} className="text-xl" />
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste">
+                <Icono nombre={icono} className="text-[22px]" />
+              </span>
               {etiqueta}
             </button>
           ))}

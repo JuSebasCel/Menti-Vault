@@ -74,7 +74,7 @@ export function AsistenteDeInvitacion({
 
       {paso === 'correo' ? (
         <>
-          <Cabecera icono="mail" titulo="Contacto" texto="A dónde le llega la invitación." />
+          <Cabecera icono="mail" titulo="Contacto" texto="A dónde le llega la solicitud de autorización." />
           <div className="w-full max-w-sm text-left">
             <Campo valor={correo} alCambiar={setCorreo} rotulo="Correo electrónico" ejemplo="Ej. ana@universidad.edu.co" tipo="email" />
           </div>
@@ -95,7 +95,7 @@ export function AsistenteDeInvitacion({
 
       {paso === 'usos' ? (
         <>
-          <Cabecera icono="verified_user" titulo="Qué se le pide" texto="Cada uso se autoriza por separado." />
+          <Cabecera icono="verified_user" titulo="Su autorización" texto="Le llegará un correo para que autorice cómo usaremos su ponencia. Quita lo que no vayas a hacer." />
           <div className="flex w-full max-w-md flex-col gap-2 text-left">
             {USOS_DEL_CONSENTIMIENTO.map((uso) => {
               const marcado = usos.includes(uso.clave)
@@ -135,7 +135,7 @@ export function AsistenteDeInvitacion({
               Ir atrás
             </BotonMind>
             <BotonMind disabled={enviando} onClick={() => void enviar()}>
-              {enviando ? 'Enviando…' : 'Enviar invitación'} <Icono nombre="send" className="text-lg" />
+              {enviando ? 'Guardando…' : 'Agregar y pedir autorización'} <Icono nombre="send" className="text-lg" />
             </BotonMind>
           </Botonera>
         </>
@@ -146,7 +146,7 @@ export function AsistenteDeInvitacion({
           <span className="flex size-14 items-center justify-center rounded-full bg-acento text-acento-contraste">
             <Icono nombre="check" className="text-3xl" />
           </span>
-          <span className="text-[36px] leading-none font-semibold">Invitación enviada</span>
+          <span className="text-[36px] leading-none font-semibold">Ponente agregado</span>
           <BotonMind variante="tenue" onClick={alTerminar} className="w-full max-w-sm justify-center">
             Salir
           </BotonMind>
