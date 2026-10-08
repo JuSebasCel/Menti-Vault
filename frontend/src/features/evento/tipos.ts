@@ -91,6 +91,9 @@ export type Memoria = {
   readonly archivoPdf: string | null
   readonly archivoDocx: string | null
   readonly generadaEl: string
+  /** Lo esencial de la memoria en texto, para quien la consulte sin abrir el PDF (el chat, por ejemplo). */
+  readonly resumen: string
+  readonly conclusiones: readonly string[]
 }
 
 export type Evidencia = {

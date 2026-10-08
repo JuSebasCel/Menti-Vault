@@ -1,13 +1,14 @@
 import type { ReactElement } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { useSession } from '@/features/auth/session'
 import { useEvento } from '@/features/evento/useEvento'
 import { elegirEvento } from '@/features/evento/eventoElegido'
 import { crearEvento, listarEventos } from '@/features/evento/repositorio'
 import type { ResumenDeEvento } from '@/features/evento/tipos'
 import { Icono } from '@/features/evento/components/piezas'
 import { Modal } from '@/shared/ui'
+import { ChatDeMenti } from '@/features/evento/menti/ChatDeMenti'
+import { LogoDeMenti } from '@/features/evento/menti/LogoDeMenti'
 import { ProveedorDeApiKey } from '@/features/configuracion/ProveedorDeApiKey'
 
 /*
@@ -75,8 +76,9 @@ function Item({
 }
 
 export function ShellDelEvento(): ReactElement {
-  const { usuario } = useSession()
   const { datos } = useEvento()
+  const [chatAbierto, setChatAbierto] = useState(false)
+  const botonMenti = useRef<HTMLButtonElement>(null)
   const navegar = useNavigate()
   const { pathname } = useLocation()
 
@@ -120,17 +122,42 @@ export function ShellDelEvento(): ReactElement {
             ))}
           </ul>
 
-          <div className="mt-auto flex flex-col pt-6">
-            <Item
-              entrada={{
-                etiqueta: usuario?.nombre.split(' ')[0] ?? 'Cuenta',
-                ruta: '/ajustes',
-                icono: 'settings',
-              }}
-              activa={pathname === '/ajustes'}
-            />
-          </div>
-        </nav>
+          {/* Abajo: Menti, que ocupa el ancho, y los ajustes en un botón pequeño a su lado. */}
+        <div className="mt-auto flex items-center gap-2 pt-6">
+          <button
+            ref={botonMenti}
+            type="button"
+            onClick={() => setChatAbierto(true)}
+            className="group flex h-12 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-[20px] bg-panel pr-3 pl-2 text-left transition-colors hover:bg-[var(--mind-variante)]"
+          >
+            <span className="transition-transform group-hover:scale-110">
+              <LogoDeMenti tamano={32} />
+            </span>
+            <span className="truncate font-['Inter_Variable'] text-[15px] font-medium text-texto">Pregúntale a Menti</span>
+          </button>
+          <NavLink
+            to="/ajustes"
+            aria-label="Ajustes"
+            className={({ isActive }) =>
+              `flex size-12 shrink-0 items-center justify-center rounded-[20px] transition-colors ${isActive ? 'bg-acento text-acento-contraste' : 'bg-panel text-texto-tenue hover:bg-[var(--mind-variante)] hover:text-texto'}`
+            }
+          >
+            <Icono nombre="settings" className="text-[22px]" />
+          </NavLink>
+        </div>
+
+        <Modal
+          abierto={chatAbierto}
+          alCerrar={() => setChatAbierto(false)}
+          titulo="Menti"
+          anclaje="disparador"
+          anclaEn={botonMenti}
+          crecerHacia="derecha"
+          sinMarco
+        >
+          {datos == null ? null : <ChatDeMenti datos={datos} alCerrar={() => setChatAbierto(false)} />}
+        </Modal>
+      </nav>
 
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 pl-2">
           <Outlet />

@@ -95,7 +95,11 @@ function mapearPonencia(fila: Fila): Ponencia {
 }
 
 function mapearMemoria(fila: Fila): Memoria {
+  const secciones = fila['secciones']
+  const contenido = typeof secciones === 'object' && secciones !== null && !Array.isArray(secciones) ? (secciones as Fila) : {}
   return {
+    resumen: texto(contenido['resumen']),
+    conclusiones: Array.isArray(contenido['conclusiones']) ? (contenido['conclusiones'] as unknown[]).filter((linea): linea is string => typeof linea === 'string') : [],
     id: texto(fila['id']),
     nombre: texto(fila['nombre']),
     alcance: (texto(fila['alcance']) || 'ponencia') as Memoria['alcance'],

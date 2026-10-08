@@ -1434,3 +1434,84 @@
   scrollbar-width: thin;
   scrollbar-color: var(--bitacora-filete-fuerte) transparent;
 }
+
+/*
+  Menti: el trazo de su M se dibuja mientras piensa, el destello late, y el
+  texto de espera brilla de lado a lado. Tres señales distintas en vez de
+  tres puntos, para que esperar se sienta como ver leer a alguien.
+*/
+.menti-trazo {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+}
+
+.menti-pensando .menti-trazo {
+  animation: menti-dibuja 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.menti-destello {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.menti-pensando .menti-destello {
+  animation: menti-late 1.6s cubic-bezier(0.38, 0.49, 0, 1.5) infinite;
+}
+
+.menti-quieto .menti-destello {
+  animation: menti-late 4s cubic-bezier(0.38, 0.49, 0, 1.5) infinite;
+}
+
+@keyframes menti-dibuja {
+  0% { stroke-dashoffset: 100; }
+  55% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -100; }
+}
+
+@keyframes menti-late {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.6) rotate(45deg); opacity: 0.6; }
+}
+
+.menti-brillo {
+  background: linear-gradient(90deg, var(--bitacora-texto-tenue) 0%, var(--bitacora-texto) 50%, var(--bitacora-texto-tenue) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: menti-brilla 1.8s linear infinite;
+}
+
+@keyframes menti-brilla {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+/* El orbe del estado vacío: el logo flotando sobre un halo que respira. */
+.menti-halo {
+  animation: menti-respira 3.2s ease-in-out infinite;
+}
+
+@keyframes menti-respira {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.18); opacity: 0.25; }
+}
+
+.menti-flota {
+  animation: menti-flotar 4s ease-in-out infinite;
+}
+
+@keyframes menti-flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menti-pensando .menti-trazo,
+  .menti-destello,
+  .menti-brillo,
+  .menti-halo,
+  .menti-flota {
+    animation: none;
+  }
+}
