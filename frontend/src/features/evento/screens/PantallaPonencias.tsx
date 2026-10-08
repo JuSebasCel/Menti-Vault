@@ -6,6 +6,7 @@ import { GaleriaDeFotos } from '../components/GaleriaDeFotos'
 import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
 import { AsistenteDeGrabacion } from '../components/AsistenteDeGrabacion'
 import { anclaDelDock } from '../anclaDelDock'
+import { descargarPonencia } from '../descargarPonencia'
 import { Modal } from '@/shared/ui'
 import { carpetaDeFotosDeSesion, leerTranscripcion } from '../repositorio'
 import { CargaDelEvento } from '../components/CargaDelEvento'
@@ -13,7 +14,7 @@ import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { APROBACION, MOMENTO, duracion, fecha, fechaYHora, minuto, momentoDe } from '../formato'
+import { MOMENTO, duracion, fecha, fechaYHora, minuto, momentoDe } from '../formato'
 import type { DatosDelEvento, Ponencia, Segmento } from '../tipos'
 
 /*
@@ -225,6 +226,7 @@ type Pestana = 'transcripcion' | 'material' | 'memoria' | 'aprobacion'
 
 function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; datos: DatosDelEvento; inicial: Pestana }): ReactElement {
   const [pestana, setPestana] = useState<Pestana>(inicial)
+  const [descargando, setDescargando] = useState<string | null>(null)
   const memoria = datos.memorias.find((una) => una.idConferencia === ponencia.id)
 
   return (
@@ -232,7 +234,7 @@ function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; d
       <Tarjeta variante="rellena" className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <span className="text-2xl leading-tight font-medium">{ponencia.titulo}</span>
-          <Estado {...APROBACION[ponencia.aprobacion]} />
+          <Estado {...MOMENTO[momentoDe(ponencia)]} />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <Dato rotulo="Ponente">{ponencia.ponente}</Dato>
@@ -242,6 +244,18 @@ function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; d
           </Dato>
           <Dato rotulo="Duración">{duracion(ponencia.duracionEnSegundos)}</Dato>
         </div>
+        <BotonMind
+          variante="tenue"
+          icono="folder_zip"
+          disabled={descargando !== null}
+          className="w-fit"
+          onClick={() => {
+            setDescargando('Preparando…')
+            void descargarPonencia(ponencia, datos, setDescargando).finally(() => setDescargando(null))
+          }}
+        >
+          {descargando ?? 'Descargar todo (.zip)'}
+        </BotonMind>
       </Tarjeta>
 
       <div className="flex gap-2 py-2">
