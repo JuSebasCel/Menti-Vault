@@ -62,7 +62,7 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
           >
             <span className="flex items-center justify-between">
               <span className="text-sm text-texto-tenue">Artículo de reflexión</span>
-              <Estado etiqueta="Listo" tono="listo" />
+              <Estado etiqueta="Listo" tono="verde" />
             </span>
             <span className="text-xl leading-snug font-medium">{produccion.titulo}</span>
             <span className="flex flex-wrap gap-4 text-sm text-texto-tenue">
@@ -277,9 +277,9 @@ function PasoTitulo({ numero, titulo, texto }: { numero: number; titulo: string;
 
 function Respaldo({ enfoque }: { enfoque: Enfoque }): ReactElement {
   const estilos = {
-    solido: { etiqueta: 'Material sólido · recomendado', tono: 'listo' as const },
-    suficiente: { etiqueta: 'Material justo', tono: 'espera' as const },
-    insuficiente: { etiqueta: 'No alcanza con este evento', tono: 'alerta' as const },
+    solido: { etiqueta: 'Material sólido · recomendado', tono: 'verde' as const },
+    suficiente: { etiqueta: 'Material justo', tono: 'ambar' as const },
+    insuficiente: { etiqueta: 'No alcanza con este evento', tono: 'rojo' as const },
   }
   return <Estado {...estilos[enfoque.respaldo]} />
 }
@@ -299,8 +299,8 @@ function Articulo({ produccion, datos }: { produccion: Produccion; datos: DatosD
         <span className="text-sm text-texto-tenue">Artículo de reflexión · {datos.evento.nombre}</span>
         <span className="text-[28px] leading-tight font-semibold">{produccion.titulo}</span>
         <span className="flex flex-wrap gap-2">
-          <Estado etiqueta={`${new Set(produccion.evidencias.map((evidencia) => evidencia.ponente)).size} ponentes citados`} tono="neutro" />
-          <Estado etiqueta={`${produccion.evidencias.length} citas verificadas contra la transcripción`} tono="listo" />
+          <Estado etiqueta={`${new Set(produccion.evidencias.map((evidencia) => evidencia.ponente)).size} ponentes citados`} tono="azul" />
+          <Estado etiqueta={`${produccion.evidencias.length} citas verificadas contra la transcripción`} tono="verde" />
         </span>
       </Tarjeta>
 

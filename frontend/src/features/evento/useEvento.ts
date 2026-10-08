@@ -1,6 +1,7 @@
 import { useSession } from '@/features/auth/session'
 import { useConsultaCacheada } from '@/shared/cache/useConsultaCacheada'
 import type { ValorDeConsultaCacheada } from '@/shared/cache/useConsultaCacheada'
+import { useEventoElegido } from './eventoElegido'
 import { cargarEvento, nombreDelEventoPrincipal } from './repositorio'
 import type { DatosDelEvento } from './tipos'
 
@@ -13,8 +14,15 @@ export const CLAVE_DEL_EVENTO = 'evento-principal'
 */
 export function useEvento(): ValorDeConsultaCacheada<DatosDelEvento | null> {
   const { usuario } = useSession()
+  const elegido = useEventoElegido()
 
-  return useConsultaCacheada(usuario === null ? null : `${CLAVE_DEL_EVENTO}:${usuario.id}`, async () => {
+  return useConsultaCacheada(usuario === null ? null : `${CLAVE_DEL_EVENTO}:${usuario.id}:${elegido ?? ''}`, async () => {
+    if (elegido !== null) {
+      const datos = await cargarEvento(elegido)
+      if (!datos.ok || datos.datos !== null) {
+        return datos
+      }
+    }
     const nombre = await nombreDelEventoPrincipal()
     if (!nombre.ok) {
       return nombre

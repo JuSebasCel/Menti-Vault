@@ -34,7 +34,15 @@ export type Evento = {
   readonly lugar: string
   readonly fechaInicio: string | null
   readonly fechaFin: string | null
+  /** Los ejes temáticos que el evento usa; vacío si no agrupa por ejes. */
+  readonly ejes: readonly string[]
+  /** Ruta del `.docx` con el formato de las memorias, uno por evento. */
+  readonly formatoDeMemoria: string | null
+  /** Reglas en lenguaje natural que acompañan al formato al redactar. */
+  readonly indicacionesDeMemoria: string
 }
+
+export type ResumenDeEvento = { readonly id: string; readonly nombre: string; readonly ponencias: number }
 
 export type Ponente = {
   readonly id: string

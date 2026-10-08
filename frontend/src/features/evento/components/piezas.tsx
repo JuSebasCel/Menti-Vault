@@ -82,10 +82,12 @@ export function Cifra({ rotulo, valor, detalle }: { rotulo: string; valor: React
 }
 
 const TONOS: Record<Tono, string> = {
-  listo: 'bg-[var(--mind-tonal)] [color:var(--mind-tonal-texto)]',
-  espera: 'tarjeta-borde text-texto',
-  alerta: 'bg-[var(--mind-alerta)] [color:var(--mind-alerta-texto)]',
-  neutro: 'bg-[var(--mind-neutro)] text-texto',
+  verde: 'bg-[var(--tono-verde)] [color:var(--tono-verde-texto)]',
+  ambar: 'bg-[var(--tono-ambar)] [color:var(--tono-ambar-texto)]',
+  azul: 'bg-[var(--tono-azul)] [color:var(--tono-azul-texto)]',
+  violeta: 'bg-[var(--tono-violeta)] [color:var(--tono-violeta-texto)]',
+  rojo: 'bg-[var(--tono-rojo)] [color:var(--tono-rojo-texto)]',
+  gris: 'bg-[var(--tono-gris)] [color:var(--tono-gris-texto)]',
 }
 
 export function Estado({ etiqueta, tono }: { etiqueta: string; tono: Tono }): ReactElement {

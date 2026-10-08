@@ -85,7 +85,7 @@ function Organizacion({ datos }: { datos: DatosDelEvento }): ReactElement {
               </td>
               <td className="px-3 py-2.5">Administrador</td>
               <td className="px-3 py-2.5">
-                <Estado etiqueta="Activo" tono="listo" />
+                <Estado etiqueta="Activo" tono="verde" />
               </td>
             </tr>
           </tbody>

@@ -2,7 +2,6 @@ import type { ReactElement } from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useSession } from '@/features/auth/session'
-import { invalidarCacheConPrefijo } from '@/shared/cache/useConsultaCacheada'
 import { mensajeDeError } from '@/shared/errors'
 import { Modal } from '@/shared/ui'
 import { CargaDelEvento } from '../components/CargaDelEvento'
@@ -11,7 +10,7 @@ import { BotonMind, Chip, EncabezadoDePagina, Icono } from '../components/piezas
 import { fecha } from '../formato'
 import { actualizarSesion, crearSesion } from '../repositorio'
 import type { CambiosDeSesion } from '../repositorio'
-import { CLAVE_DEL_EVENTO } from '../useEvento'
+import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Ponencia, TipoDeSesion } from '../tipos'
 
 /*
@@ -59,17 +58,36 @@ function diasDelEvento(datos: DatosDelEvento): string[] {
   return [...dias].sort()
 }
 
+/* La vista elegida se recuerda: volver a la agenda y encontrarla cambiada obliga a elegirla otra vez. */
+const CLAVE_DE_VISTA = 'menti-vista-de-agenda'
+
+function vistaRecordada(): 'dias' | 'lista' {
+  try {
+    return window.localStorage.getItem(CLAVE_DE_VISTA) === 'lista' ? 'lista' : 'dias'
+  } catch {
+    return 'dias'
+  }
+}
+
 const DIA_DE_LA_SEMANA = new Intl.DateTimeFormat('es-CO', { weekday: 'short' })
 
 function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
-  const [vista, setVista] = useState<'dias' | 'lista'>('dias')
+  const [vista, setVistaEnEstado] = useState<'dias' | 'lista'>(vistaRecordada)
+  const setVista = (siguiente: 'dias' | 'lista'): void => {
+    setVistaEnEstado(siguiente)
+    try {
+      window.localStorage.setItem(CLAVE_DE_VISTA, siguiente)
+    } catch {
+      // Sin almacenamiento la vista se recuerda solo mientras dure la pantalla.
+    }
+  }
   const [eje, setEje] = useState<string | null>(null)
   const [origen, setOrigen] = useState<DOMRect | null>(null)
   const botonNueva = useRef<HTMLButtonElement>(null)
 
   const dias = useMemo(() => diasDelEvento(datos), [datos])
-  const ejes = useMemo(() => [...new Set(datos.ponencias.map((ponencia) => ponencia.eje).filter((uno) => uno !== ''))], [datos.ponencias])
+  const ejes = datos.evento.ejes
   const visibles = datos.ponencias.filter((ponencia) => eje === null || ponencia.eje === eje)
   const editando = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('sesion')) ?? null
   const creando = parametros.get('nueva') === '1'
@@ -318,6 +336,7 @@ function FormularioDeSesion({
   inicial: Ponencia | null
   alTerminar: () => void
 }): ReactElement {
+  const { invalidar: refrescar } = useEvento()
   const { usuario } = useSession()
   const navegar = useNavigate()
   const [cambios, setCambios] = useState<CambiosDeSesion>({
@@ -332,7 +351,7 @@ function FormularioDeSesion({
   })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const ejes = [...new Set(datos.ponencias.map((ponencia) => ponencia.eje).filter((uno) => uno !== ''))]
+  const ejes = datos.evento.ejes
   const poner = <C extends keyof CambiosDeSesion>(clave: C, valor: CambiosDeSesion[C]): void => setCambios({ ...cambios, [clave]: valor })
 
   const guardar = async (): Promise<void> => {
@@ -347,7 +366,7 @@ function FormularioDeSesion({
       setError(mensajeDeError(resultado.codigo))
       return
     }
-    invalidarCacheConPrefijo(CLAVE_DEL_EVENTO)
+    refrescar()
     alTerminar()
   }
 

@@ -13,6 +13,7 @@ import { PantallaPublicaciones } from '@/features/evento/screens/PantallaPublica
 import { PantallaOrganizacion } from '@/features/evento/screens/PantallaOrganizacion'
 import { PantallaAgenda } from '@/features/evento/screens/PantallaAgenda'
 import { PantallaAjustes } from '@/features/evento/screens/PantallaAjustes'
+import { PantallaEvento } from '@/features/evento/screens/PantallaEvento'
 import { RutaProtegida } from '@/app/RutaProtegida'
 import { CompuertaDelSitio } from '@/app/CompuertaDelSitio'
 import { RutaPublica } from '@/app/RutaPublica'
@@ -71,6 +72,7 @@ export function App(): ReactElement {
                 <Route path="/redes" element={<PantallaPublicaciones />} />
                 <Route path="/organizacion" element={<PantallaOrganizacion />} />
                 <Route path="/ajustes" element={<PantallaAjustes />} />
+                <Route path="/evento" element={<PantallaEvento />} />
                 {/* Los nombres anteriores, por si quedó algún enlace. */}
                 <Route path="/produccion" element={<Navigate to="/articulos" replace />} />
                 <Route path="/publicaciones" element={<Navigate to="/redes" replace />} />

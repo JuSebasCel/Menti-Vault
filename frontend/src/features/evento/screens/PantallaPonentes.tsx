@@ -32,7 +32,8 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const botonInvitar = useRef<HTMLButtonElement>(null)
 
   const idAbierto = parametros.get('ver')
-  const invitando = parametros.get('invitar') === '1'
+  const invitar = parametros.get('invitar')
+  const invitando = invitar !== null
   const abierto = datos.ponentes.find((ponente) => ponente.id === idAbierto) ?? null
 
   const visibles = useMemo(
@@ -66,23 +67,27 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
           <Cifra rotulo="Totales" valor={datos.ponentes.length} />
         </Tarjeta>
         <Tarjeta variante="rellena">
-          <Cifra rotulo="Consintieron" valor={cuenta('aceptado')} />
+          <Cifra rotulo="Autorizaron" valor={cuenta('aceptado')} />
         </Tarjeta>
         <Tarjeta variante="rellena">
           <Cifra rotulo="Esperando respuesta" valor={cuenta('enviado')} />
         </Tarjeta>
         <Tarjeta variante="rellena">
-          <Cifra rotulo="Sin invitar" valor={cuenta('sin-enviar')} />
+          <Cifra rotulo="Por invitar" valor={cuenta('sin-enviar')} />
         </Tarjeta>
       </div>
+
+      <p className="px-1 text-sm text-texto-tenue">
+        Autorizar es el permiso del ponente para grabar, transcribir y usar su ponencia en memorias, artículos y redes.
+      </p>
 
       <div className="flex gap-2">
         {(
           [
             ['todos', 'Todos'],
-            ['aceptado', 'Consintieron'],
+            ['aceptado', 'Autorizaron'],
             ['enviado', 'Esperando'],
-            ['sin-enviar', 'Sin invitar'],
+            ['sin-enviar', 'Por invitar'],
           ] as const
         ).map(([valor, etiqueta]) => (
           <Chip key={valor} elegido={filtro === valor} onClick={() => setFiltro(valor)}>
@@ -97,7 +102,7 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
             <tr className="border-b border-filete text-texto">
               <th className="px-3 py-3 font-normal">Nombre</th>
               <th className="px-3 py-3 font-normal">Ponencias</th>
-              <th className="px-3 py-3 font-normal">Consentimiento</th>
+              <th className="px-3 py-3 font-normal">Autorización</th>
               <th className="px-3 py-3 font-normal">Usos autorizados</th>
               <th className="px-3 py-3" />
             </tr>
@@ -121,7 +126,17 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
                   <td className="px-3 py-2.5 text-texto-tenue">
                     {ponente.consentimiento === 'aceptado' ? `${autorizados} de ${USOS_DEL_CONSENTIMIENTO.length}` : '—'}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    {ponente.consentimiento === 'sin-enviar' ? (
+                      <button
+                        type="button"
+                        onClick={() => cambiar('invitar', ponente.id)}
+                        className="mr-1 inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-acento px-4 font-medium text-acento-contraste transition-opacity hover:opacity-85"
+                      >
+                        <Icono nombre="send" className="text-base" />
+                        Invitar
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={(evento) => {
@@ -147,7 +162,7 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
         origen={origen}
         titulo={abierto?.nombre ?? 'Ponente'}
       >
-        {abierto === null ? null : <DetalleDelPonente ponente={abierto} datos={datos} />}
+        {abierto === null ? null : <DetalleDelPonente ponente={abierto} datos={datos} alInvitar={() => cambiar('invitar', abierto.id)} />}
       </PanelLateral>
 
       <Modal
@@ -158,13 +173,13 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
         ancho="normal"
         cerrarAlPulsarElVelo={false}
       >
-        <AsistenteDeInvitacion datos={datos} alTerminar={() => cambiar('invitar', null)} />
+        <AsistenteDeInvitacion datos={datos} idInicial={invitar === '1' ? null : invitar} alTerminar={() => cambiar('invitar', null)} />
       </Modal>
     </div>
   )
 }
 
-function DetalleDelPonente({ ponente, datos }: { ponente: Ponente; datos: DatosDelEvento }): ReactElement {
+function DetalleDelPonente({ ponente, datos, alInvitar }: { ponente: Ponente; datos: DatosDelEvento; alInvitar: () => void }): ReactElement {
   const [pestana, setPestana] = useState<'consentimiento' | 'ponencias'>('consentimiento')
   const [viendoLoQueRecibe, setViendoLoQueRecibe] = useState(false)
   const botonVista = useRef<HTMLButtonElement>(null)
@@ -186,8 +201,8 @@ function DetalleDelPonente({ ponente, datos }: { ponente: Ponente; datos: DatosD
             Ver lo que recibe
           </BotonMind>
           {ponente.consentimiento === 'aceptado' ? null : (
-            <BotonMind variante="tenue" icono="send">
-              Reenviar invitación
+            <BotonMind variante="tenue" icono="send" onClick={alInvitar}>
+              {ponente.consentimiento === 'sin-enviar' ? 'Invitar' : 'Reenviar invitación'}
             </BotonMind>
           )}
         </div>
@@ -204,7 +219,7 @@ function DetalleDelPonente({ ponente, datos }: { ponente: Ponente; datos: DatosD
 
       {pestana === 'consentimiento' ? (
         <Tarjeta className="flex flex-col gap-5">
-          <span className="text-2xl">Qué autorizó</span>
+          <span className="text-2xl">Autorización</span>
           {ponente.consentimiento === 'aceptado' ? (
             <ul className="flex flex-col gap-2">
               {USOS_DEL_CONSENTIMIENTO.map((uso) => {
@@ -222,7 +237,9 @@ function DetalleDelPonente({ ponente, datos }: { ponente: Ponente; datos: DatosD
             </ul>
           ) : (
             <p className="text-sm text-texto-tenue">
-              {ponente.consentimiento === 'enviado' ? 'Sin respuesta todavía.' : 'Sin invitar.'}
+              {ponente.consentimiento === 'enviado'
+                ? 'Recibió la invitación y todavía no responde.'
+                : 'Entró al directorio al subir su ponencia. Invítalo para pedirle autorización.'}
             </p>
           )}
           <div className="grid grid-cols-3 gap-4">

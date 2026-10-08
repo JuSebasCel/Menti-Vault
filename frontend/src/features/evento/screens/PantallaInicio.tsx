@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useSession } from '@/features/auth/session'
@@ -30,6 +30,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
   const { usuario } = useSession()
   const navegar = useNavigate()
   const { ponentes, ponencias, memorias, producciones } = datos
+
 
   const dias = useMemo(() => [...new Set(ponencias.map((ponencia) => ponencia.fecha))].sort(), [ponencias])
   const [dia, setDia] = useState(dias[0] ?? '')
@@ -69,8 +70,8 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
   ]
 
   return (
-    <div className="flex flex-1 flex-col gap-2">
-      <div className="pb-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="shrink-0 pb-2">
         <EncabezadoDePagina titulo="Inicio">
           <BotonMind icono="add" onClick={() => void navegar('/agenda?nueva=1')}>
             Crear
@@ -78,7 +79,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         </EncabezadoDePagina>
       </div>
 
-      <div className="entrar-escalonado grid grid-cols-3 gap-2">
+      <div className="entrar-escalonado grid shrink-0 grid-cols-3 gap-2">
         <Tarjeta variante="rellena" className="relative flex flex-col gap-6">
           <div className="flex flex-col">
             <span className="text-2xl font-semibold">Hola {usuario?.nombre.split(' ')[0] ?? ''}</span>
@@ -113,96 +114,117 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         </Tarjeta>
       </div>
 
-      <div className="entrar-escalonado grid flex-1 grid-cols-3 gap-2">
-        <Tarjeta className="flex flex-col gap-4 p-2">
-          <div className="flex flex-col gap-3 px-4 pt-4">
-            <span className="text-2xl font-medium">Sesiones</span>
-            <div className="flex gap-2">
-              {dias.map((uno) => (
-                <Chip key={uno} elegido={dia === uno} onClick={() => setDia(uno)}>
-                  <span className="capitalize">{DIA_CORTO.format(new Date(`${uno}T12:00:00`))}</span>
-                </Chip>
-              ))}
-            </div>
+      <div className="entrar-escalonado grid min-h-0 flex-1 grid-cols-3 gap-2">
+        <Columna titulo="Sesiones">
+          <div className="flex shrink-0 gap-2 px-4">
+            {dias.map((uno) => (
+              <Chip key={uno} elegido={dia === uno} onClick={() => setDia(uno)}>
+                <span className="capitalize">{DIA_CORTO.format(new Date(`${uno}T12:00:00`))}</span>
+              </Chip>
+            ))}
           </div>
-          <ol key={dia} className="entrar-escalonado flex flex-col gap-1">
+          <ol key={dia} className="entrar-escalonado flex min-h-0 flex-col gap-2 overflow-y-auto px-2 pb-2">
             {ponencias
               .filter((ponencia) => ponencia.fecha === dia)
               .map((ponencia) => (
                 <li key={ponencia.id}>
-                  <button
-                    type="button"
-                    onClick={() => void navegar(`/ponencias?ver=${ponencia.id}`)}
-                    className="flex w-full cursor-pointer gap-3 rounded-[16px] px-4 py-3 text-left transition-colors hover:bg-panel"
-                  >
-                    <span className="w-11 shrink-0 font-mono text-sm">{ponencia.horaInicio ?? '—'}</span>
-                    <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-[15px] font-medium">{ponencia.titulo}</span>
-                      <span className="truncate text-sm text-texto-tenue">{ponencia.ponente}</span>
-                    </span>
-                  </button>
+                  <Fila
+                    alPulsar={() => void navegar(`/ponencias?ver=${ponencia.id}`)}
+                    inicio={<span className="w-11 shrink-0 font-mono text-sm">{ponencia.horaInicio ?? '—'}</span>}
+                    titulo={ponencia.titulo}
+                    detalle={ponencia.ponente}
+                  />
                 </li>
               ))}
           </ol>
-        </Tarjeta>
+        </Columna>
 
-        <Tarjeta className="col-span-2 flex flex-col gap-4 p-2">
-          <div className="flex flex-col gap-3 px-4 pt-4">
-            <span className="text-2xl font-medium">Solicitudes</span>
-          </div>
+        <Columna titulo="Solicitudes">
           {solicitudes.length === 0 ? (
             <Vacio icono="checklist" texto="No hay solicitudes" />
           ) : (
-            <ul className="flex flex-col gap-1">
+            <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto px-2 pb-2">
               {solicitudes.map((solicitud) => (
                 <li key={solicitud.id}>
-                  <button
-                    type="button"
-                    onClick={() => void navegar(solicitud.ruta)}
-                    className="flex w-full cursor-pointer items-center gap-4 rounded-[16px] px-4 py-3 text-left transition-colors hover:bg-panel"
-                  >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste">
-                      <Icono nombre={solicitud.icono} className="text-xl" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-[15px] font-medium">{solicitud.titulo}</span>
-                      <span className="text-sm text-texto-tenue">{solicitud.detalle}</span>
-                    </span>
-                    <Icono nombre="arrow_outward" className="text-lg" />
-                  </button>
+                  <Fila
+                    alPulsar={() => void navegar(solicitud.ruta)}
+                    inicio={
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste">
+                        <Icono nombre={solicitud.icono} className="text-xl" />
+                      </span>
+                    }
+                    titulo={solicitud.titulo}
+                    detalle={solicitud.detalle}
+                  />
                 </li>
               ))}
             </ul>
           )}
+        </Columna>
 
-          <div className="mt-auto grid grid-cols-2 gap-2 p-2">
-            <button
-              type="button"
-              onClick={() => void navegar('/memorias-del-evento')}
-              className="flex cursor-pointer items-center gap-3 rounded-[20px] bg-panel p-4 text-left transition-colors hover:bg-[var(--mind-neutro)]"
-            >
-              <Icono nombre="menu_book" className="text-2xl" />
-              <span className="flex min-w-0 flex-col">
-                <span className="font-medium">Memoria general</span>
-                <span className="truncate text-sm text-texto-tenue">{general === undefined ? 'Sin generar' : 'Lista para entregar'}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => void navegar('/articulos')}
-              className="flex cursor-pointer items-center gap-3 rounded-[20px] bg-panel p-4 text-left transition-colors hover:bg-[var(--mind-neutro)]"
-            >
-              <Icono nombre="school" className="text-2xl" />
-              <span className="flex min-w-0 flex-col">
-                <span className="font-medium">Artículos</span>
-                <span className="truncate text-sm text-texto-tenue">
-                  {producciones.length} {producciones.length === 1 ? 'listo' : 'listos'}
-                </span>
-              </span>
-            </button>
-          </div>
-        </Tarjeta>
+        <Columna titulo="Entregables">
+          <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto px-2 pb-2">
+            <li>
+              <Fila
+                alPulsar={() => void navegar('/memorias-del-evento')}
+                inicio={<Icono nombre="menu_book" className="text-2xl" />}
+                titulo="Memoria general"
+                detalle={general === undefined ? 'Sin generar' : 'Lista para entregar'}
+              />
+            </li>
+            <li>
+              <Fila
+                alPulsar={() => void navegar('/memorias-del-evento')}
+                inicio={<Icono nombre="description" className="text-2xl" />}
+                titulo="Memorias por ponencia"
+                detalle={`${memorias.filter((memoria) => memoria.alcance === 'ponencia').length} de ${ponencias.length}`}
+              />
+            </li>
+            <li>
+              <Fila
+                alPulsar={() => void navegar('/articulos')}
+                inicio={<Icono nombre="school" className="text-2xl" />}
+                titulo="Artículos"
+                detalle={`${producciones.length} ${producciones.length === 1 ? 'listo' : 'listos'}`}
+              />
+            </li>
+            <li>
+              <Fila
+                alPulsar={() => void navegar('/redes')}
+                inicio={<Icono nombre="campaign" className="text-2xl" />}
+                titulo="Redes"
+                detalle={`${datos.publicaciones.length} piezas`}
+              />
+            </li>
+          </ul>
+        </Columna>
       </div>
     </div>
+  )
+}
+
+function Columna({ titulo, children }: { titulo: string; children: ReactNode }): ReactElement {
+  return (
+    <section className="tarjeta-borde flex min-h-0 flex-col gap-4 rounded-[24px] bg-fondo pt-6">
+      <h2 className="shrink-0 px-6 text-2xl font-medium">{titulo}</h2>
+      {children}
+    </section>
+  )
+}
+
+/* Cada dato en su propia caja gris, separada de la siguiente: sin eso la columna se leía como un solo bloque. */
+function Fila({ alPulsar, inicio, titulo, detalle }: { alPulsar: () => void; inicio: ReactNode; titulo: string; detalle: string }): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={alPulsar}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-[16px] bg-panel px-4 py-3 text-left transition-colors hover:bg-[var(--mind-variante)]"
+    >
+      {inicio}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[15px] font-medium">{titulo}</span>
+        <span className="truncate text-sm text-texto-tenue">{detalle}</span>
+      </span>
+    </button>
   )
 }

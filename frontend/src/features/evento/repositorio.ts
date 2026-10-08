@@ -3,6 +3,7 @@ import { codigoDeErrorDeSupabase } from '@/shared/supabase/consultas'
 import type { ResultadoDeConsulta } from '@/shared/supabase/consultas'
 import type {
   DatosDelEvento,
+  ResumenDeEvento,
   EstadoDeAprobacion,
   EstadoDeConsentimiento,
   Evento,
@@ -47,6 +48,9 @@ function mapearEvento(fila: Fila): Evento {
     lugar: texto(fila['lugar']),
     fechaInicio: textoONulo(fila['fecha_inicio']),
     fechaFin: textoONulo(fila['fecha_fin']),
+    ejes: Array.isArray(fila['ejes']) ? (fila['ejes'] as unknown[]).filter((eje): eje is string => typeof eje === 'string') : [],
+    formatoDeMemoria: textoONulo(fila['formato_de_memoria']),
+    indicacionesDeMemoria: texto(fila['indicaciones_de_memoria']),
   }
 }
 
@@ -283,19 +287,89 @@ export async function pedirAprobacion(idConferencia: string): Promise<ResultadoD
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
 
-export async function actualizarEvento(
-  idEvento: string,
-  cambios: { descripcion: string; lugar: string; fechaInicio: string; fechaFin: string },
+export type CambiosDeEvento = {
+  readonly descripcion: string
+  readonly lugar: string
+  readonly fechaInicio: string
+  readonly fechaFin: string
+  readonly ejes: readonly string[]
+  readonly indicacionesDeMemoria: string
+}
+
+export async function actualizarEvento(idEvento: string, cambios: Partial<CambiosDeEvento>): Promise<ResultadoDeConsulta<null>> {
+  const fila: Record<string, unknown> = {}
+  if (cambios.descripcion !== undefined) fila['descripcion'] = cambios.descripcion
+  if (cambios.lugar !== undefined) fila['lugar'] = cambios.lugar
+  if (cambios.fechaInicio !== undefined) fila['fecha_inicio'] = cambios.fechaInicio || null
+  if (cambios.fechaFin !== undefined) fila['fecha_fin'] = cambios.fechaFin || null
+  if (cambios.ejes !== undefined) fila['ejes'] = cambios.ejes
+  if (cambios.indicacionesDeMemoria !== undefined) fila['indicaciones_de_memoria'] = cambios.indicacionesDeMemoria
+
+  const { error } = await supabase.from('eventos').update(fila).eq('id', idEvento)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/* Los eventos con su número de ponencias, para el selector del dock. */
+export async function listarEventos(): Promise<ResultadoDeConsulta<readonly ResumenDeEvento[]>> {
+  const [eventos, conferencias] = await Promise.all([
+    supabase.from('eventos').select('id, nombre').order('nombre'),
+    supabase.from('conferencias').select('evento'),
+  ])
+  if (eventos.error !== null) {
+    return { ok: false, codigo: codigoDeErrorDeSupabase(eventos.error) }
+  }
+  const cuentas = new Map<string, number>()
+  for (const fila of conferencias.data ?? []) {
+    const nombre = texto((fila as Fila)['evento'])
+    cuentas.set(nombre, (cuentas.get(nombre) ?? 0) + 1)
+  }
+  return {
+    ok: true,
+    datos: (eventos.data ?? [])
+      .map((fila) => ({ id: texto((fila as Fila)['id']), nombre: texto((fila as Fila)['nombre']), ponencias: cuentas.get(texto((fila as Fila)['nombre'])) ?? 0 }))
+      .filter((evento) => evento.nombre !== 'Pruebas'),
+  }
+}
+
+/*
+  Renombrar o quitar un eje lo cambia también en sus sesiones: el eje vive
+  como texto en cada una, y dejarlas con el nombre viejo las sacaría del
+  filtro sin que nadie lo notara. Quitarlo es renombrarlo a "sin eje".
+*/
+export async function cambiarEje(
+  evento: Evento,
+  anterior: string,
+  nuevo: string | null,
 ): Promise<ResultadoDeConsulta<null>> {
-  const { error } = await supabase
-    .from('eventos')
-    .update({
-      descripcion: cambios.descripcion,
-      lugar: cambios.lugar,
-      fecha_inicio: cambios.fechaInicio || null,
-      fecha_fin: cambios.fechaFin || null,
-    })
-    .eq('id', idEvento)
+  const ejes = nuevo === null ? evento.ejes.filter((eje) => eje !== anterior) : evento.ejes.map((eje) => (eje === anterior ? nuevo : eje))
+  const [enEvento, enSesiones] = await Promise.all([
+    supabase.from('eventos').update({ ejes }).eq('id', evento.id),
+    supabase.from('conferencias').update({ eje: nuevo ?? '' }).eq('evento', evento.nombre).eq('eje', anterior),
+  ])
+  const error = enEvento.error ?? enSesiones.error
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+export async function crearEvento(nombre: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('eventos').insert({ nombre })
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/*
+  Reemplazar el formato de las memorias del evento. Se sube con un nombre
+  nuevo y no encima del anterior: Storage no sobrescribe, y una memoria ya
+  generada sigue apuntando al formato con el que se hizo.
+*/
+export async function subirFormato(idDueno: string, evento: Evento, archivo: File): Promise<ResultadoDeConsulta<null>> {
+  const carpeta = evento.nombre.normalize('NFD').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
+  const ruta = `${idDueno}/eventos/${carpeta}/formato-${Date.now()}.docx`
+  const subida = await supabase.storage.from(BUCKET).upload(ruta, archivo, {
+    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  })
+  if (subida.error !== null) {
+    return { ok: false, codigo: 'DATOS_FALLO_INESPERADO' }
+  }
+  const { error } = await supabase.from('eventos').update({ formato_de_memoria: ruta }).eq('id', evento.id)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
 

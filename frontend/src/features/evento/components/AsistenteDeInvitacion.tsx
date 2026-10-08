@@ -1,8 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useState } from 'react'
 import { mensajeDeError } from '@/shared/errors'
-import { invalidarCacheConPrefijo } from '@/shared/cache/useConsultaCacheada'
-import { CLAVE_DEL_EVENTO } from '../useEvento'
+import { useEvento } from '../useEvento'
 import { crearPonenteInvitado, registrarInvitacion } from '../repositorio'
 import { USOS_DEL_CONSENTIMIENTO } from '../tipos'
 import type { DatosDelEvento, UsoDelConsentimiento } from '../tipos'
@@ -19,10 +18,20 @@ import { CorreoDeInvitacion } from './VistaDelPonente'
 */
 type Paso = 'quien' | 'correo' | 'usos' | 'resumen' | 'hecho'
 
-export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEvento; alTerminar: () => void }): ReactElement {
+export function AsistenteDeInvitacion({
+  datos,
+  idInicial = null,
+  alTerminar,
+}: {
+  datos: DatosDelEvento
+  /** El ponente ya elegido cuando se invita desde su fila: el asistente empieza en el correo. */
+  idInicial?: string | null
+  alTerminar: () => void
+}): ReactElement {
+  const { invalidar: refrescar } = useEvento()
   const pendientes = datos.ponentes.filter((ponente) => ponente.consentimiento !== 'aceptado')
-  const [paso, setPaso] = useState<Paso>('quien')
-  const [idPonente, setIdPonente] = useState<string | null>(pendientes[0]?.id ?? null)
+  const [paso, setPaso] = useState<Paso>(idInicial === null ? 'quien' : 'correo')
+  const [idPonente, setIdPonente] = useState<string | null>(idInicial ?? pendientes[0]?.id ?? null)
   const [nombreNuevo, setNombreNuevo] = useState('')
   const [correo, setCorreo] = useState('')
   const [usos, setUsos] = useState<UsoDelConsentimiento[]>(USOS_DEL_CONSENTIMIENTO.map((uso) => uso.clave))
@@ -44,7 +53,7 @@ export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEv
       setError(mensajeDeError(resultado.codigo))
       return
     }
-    invalidarCacheConPrefijo(CLAVE_DEL_EVENTO)
+    refrescar()
     setPaso('hecho')
   }
 
