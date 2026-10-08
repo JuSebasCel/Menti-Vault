@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { CargaDelEvento } from '../components/CargaDelEvento'
+import { Miniatura } from '../components/MiniaturaDeMemoria'
 import { BotonMind, Chip, EncabezadoDePagina, Icono, Tarjeta, Vacio } from '../components/piezas'
 import { estaAprobada } from '../formato'
 import type { DatosDelEvento } from '../tipos'
@@ -37,7 +38,6 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   const porAprobar = ponencias.filter((ponencia) => !estaAprobada(ponencia.aprobacion)).length
   const sinConsentir = ponentes.filter((ponente) => ponente.consentimiento !== 'aceptado').length
-  const general = memorias.find((memoria) => memoria.alcance === 'evento')
 
   const solicitudes: Solicitud[] = [
     ...ponentes
@@ -163,40 +163,37 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         </Columna>
 
         <Columna titulo="Entregables">
-          <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto px-2 pb-2">
-            <li>
-              <Fila
-                alPulsar={() => void navegar('/memorias-del-evento')}
-                inicio={<Icono nombre="menu_book" className="text-2xl" />}
-                titulo="Memoria general"
-                detalle={general === undefined ? 'Sin generar' : 'Lista para entregar'}
-              />
-            </li>
-            <li>
-              <Fila
-                alPulsar={() => void navegar('/memorias-del-evento')}
-                inicio={<Icono nombre="description" className="text-2xl" />}
-                titulo="Memorias por ponencia"
-                detalle={`${memorias.filter((memoria) => memoria.alcance === 'ponencia').length} de ${ponencias.length}`}
-              />
-            </li>
-            <li>
-              <Fila
-                alPulsar={() => void navegar('/articulos')}
-                inicio={<Icono nombre="school" className="text-2xl" />}
-                titulo="Artículos"
-                detalle={`${producciones.length} ${producciones.length === 1 ? 'listo' : 'listos'}`}
-              />
-            </li>
-            <li>
-              <Fila
-                alPulsar={() => void navegar('/redes')}
-                inicio={<Icono nombre="campaign" className="text-2xl" />}
-                titulo="Redes"
-                detalle={`${datos.publicaciones.length} piezas`}
-              />
-            </li>
-          </ul>
+          {/* Lo que ya se puede entregar, con su primera página: se reconoce sin abrirlo. */}
+          <div className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto px-4 pb-2">
+            {memorias
+              .filter((memoria) => (memoria.alcance === 'evento' || memoria.alcance === 'agrupacion') && memoria.archivoPdf !== null)
+              .sort((una, otra) => (una.alcance === 'evento' ? -1 : otra.alcance === 'evento' ? 1 : 0))
+              .map((memoria) => (
+                <button
+                  key={memoria.id}
+                  type="button"
+                  onClick={() => void navegar('/memorias-del-evento')}
+                  className="flex cursor-pointer flex-col gap-1.5 rounded-[16px] text-left transition-transform hover:scale-[1.02]"
+                >
+                  <Miniatura rutaPdf={memoria.archivoPdf ?? ''} titulo={memoria.nombre} />
+                  <span className="truncate px-1 text-sm font-medium">{memoria.alcance === 'evento' ? 'Memoria general' : memoria.agrupacion}</span>
+                </button>
+              ))}
+          </div>
+          <div className="mt-auto flex shrink-0 flex-col gap-2 px-2 pb-2">
+            <Fila
+              alPulsar={() => void navegar('/memorias-del-evento')}
+              inicio={<Icono nombre="description" className="text-2xl" />}
+              titulo={`${memorias.filter((memoria) => memoria.alcance === 'ponencia').length} memorias por ponencia`}
+              detalle="Aprobadas por sus ponentes"
+            />
+            <Fila
+              alPulsar={() => void navegar('/articulos')}
+              inicio={<Icono nombre="school" className="text-2xl" />}
+              titulo={producciones[0]?.titulo ?? 'Sin artículos todavía'}
+              detalle={producciones.length === 0 ? 'Crea uno desde Artículos' : `${producciones.length} ${producciones.length === 1 ? 'artículo listo' : 'artículos listos'}`}
+            />
+          </div>
         </Columna>
       </div>
     </div>

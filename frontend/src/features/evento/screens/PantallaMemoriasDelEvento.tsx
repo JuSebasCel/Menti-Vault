@@ -1,13 +1,13 @@
 import type { ReactElement } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Modal } from '@/shared/ui'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
+import { Miniatura } from '../components/MiniaturaDeMemoria'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
 import { APROBACION, estaAprobada, fecha, fechaYHora, mismoPonente } from '../formato'
-import { direccionDeArchivo } from '../repositorio'
 import type { DatosDelEvento, Memoria, Ponencia } from '../tipos'
 
 /*
@@ -22,32 +22,6 @@ import type { DatosDelEvento, Memoria, Ponencia } from '../tipos'
 */
 export function PantallaMemoriasDelEvento(): ReactElement {
   return <CargaDelEvento>{(datos) => <Memorias datos={datos} />}</CargaDelEvento>
-}
-
-function rutaDeMiniatura(rutaPdf: string): string {
-  return `${rutaPdf.slice(0, rutaPdf.lastIndexOf('/'))}/miniatura.png`
-}
-
-function Miniatura({ rutaPdf, titulo }: { rutaPdf: string; titulo: string }): ReactElement {
-  const [url, setUrl] = useState<string | null>(null)
-  const [cargada, setCargada] = useState(false)
-
-  useEffect(() => {
-    void direccionDeArchivo(rutaDeMiniatura(rutaPdf)).then(setUrl)
-  }, [rutaPdf])
-
-  return (
-    <span className={`block aspect-[3/4] overflow-hidden rounded-[16px] bg-panel shadow-[0_0_0_1px_var(--bitacora-filete)] ${cargada ? '' : 'animate-pulse'}`}>
-      {url === null ? null : (
-        <img
-          src={url}
-          alt={`Primera página de ${titulo}`}
-          onLoad={() => setCargada(true)}
-          className={`size-full object-cover object-top transition-opacity duration-500 ${cargada ? 'opacity-100' : 'opacity-0'}`}
-        />
-      )}
-    </span>
-  )
 }
 
 /* Lo que una ponencia necesita para entrar a una memoria, en el orden en que se resuelve. */
@@ -169,6 +143,7 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 {fechaYHora(abierta.generadaEl)}
               </span>
             </div>
+            <CambioPedido memoria={abierta} datos={datos} />
             <VisorDePdf ruta={abierta.archivoPdf} rutaDocx={abierta.archivoDocx} titulo={abierta.nombre} />
           </div>
         )}
@@ -326,5 +301,24 @@ function Requisito({ ok, texto }: { ok: boolean; texto: string }): ReactElement 
       <Icono nombre={ok ? 'check_circle' : 'error'} className={`text-lg ${ok ? '[color:var(--tono-verde-texto)]' : '[color:var(--tono-ambar-texto)]'}`} />
       {texto}
     </span>
+  )
+}
+
+/* Lo que el ponente pidió corregir, encima de su memoria: es lo primero que hay que comprobar al abrirla. */
+function CambioPedido({ memoria, datos }: { memoria: Memoria; datos: DatosDelEvento }): ReactElement | null {
+  const ponencia = datos.ponencias.find((una) => una.id === memoria.idConferencia)
+  if (ponencia === undefined || ponencia.comentarioDelPonente === '') {
+    return null
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-[20px] bg-[var(--tono-azul)] px-5 py-4 [color:var(--tono-azul-texto)]">
+      <span className="flex items-center gap-2 text-sm font-semibold">
+        <Icono nombre="edit_note" className="text-lg" /> {ponencia.ponente.split(' ')[0]} pidió cambiar
+      </span>
+      <span className="text-[15px] leading-relaxed">«{ponencia.comentarioDelPonente}»</span>
+      <span className="flex items-center gap-1.5 text-sm opacity-80">
+        <Icono nombre="check_circle" className="text-base" /> Aplicado en esta versión
+      </span>
+    </div>
   )
 }

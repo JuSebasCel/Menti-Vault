@@ -7,6 +7,7 @@ import { elegirEvento } from '@/features/evento/eventoElegido'
 import { crearEvento, listarEventos } from '@/features/evento/repositorio'
 import type { ResumenDeEvento } from '@/features/evento/tipos'
 import { Icono } from '@/features/evento/components/piezas'
+import { Modal } from '@/shared/ui'
 import { ProveedorDeApiKey } from '@/features/configuracion/ProveedorDeApiKey'
 
 /*
@@ -144,97 +145,116 @@ export function ShellDelEvento(): ReactElement {
 function SelectorDeEvento({ nombre }: { nombre: string }): ReactElement {
   const [abierto, setAbierto] = useState(false)
   const [eventos, setEventos] = useState<readonly ResumenDeEvento[]>([])
+  const [creando, setCreando] = useState(false)
   const [nuevo, setNuevo] = useState('')
-  const caja = useRef<HTMLDivElement>(null)
+  const boton = useRef<HTMLButtonElement>(null)
   const navegar = useNavigate()
 
   useEffect(() => {
-    if (!abierto) {
-      return
+    if (abierto) {
+      void listarEventos().then((resultado) => resultado.ok && setEventos(resultado.datos))
+    } else {
+      setCreando(false)
+      setNuevo('')
     }
-    void listarEventos().then((resultado) => resultado.ok && setEventos(resultado.datos))
-    const alPulsarFuera = (evento: MouseEvent): void => {
-      if (!caja.current?.contains(evento.target as Node)) {
-        setAbierto(false)
-      }
-    }
-    window.addEventListener('mousedown', alPulsarFuera)
-    return () => window.removeEventListener('mousedown', alPulsarFuera)
   }, [abierto])
 
+  const crear = (): void => {
+    const nombreNuevo = nuevo.trim()
+    void crearEvento(nombreNuevo).then((resultado) => {
+      if (resultado.ok) {
+        elegirEvento(nombreNuevo)
+        setAbierto(false)
+        void navegar('/evento')
+      }
+    })
+  }
+
+  const fila = 'flex h-12 w-full cursor-pointer items-center gap-3 rounded-[24px] px-4 text-left text-[15px] transition-colors'
+
   return (
-    <div ref={caja} className="relative mb-4">
+    <div className="mb-4">
       <button
+        ref={boton}
         type="button"
-        onClick={() => setAbierto(!abierto)}
-        aria-expanded={abierto}
+        onClick={() => setAbierto(true)}
+        aria-haspopup="dialog"
         className="flex w-full cursor-pointer items-center gap-2 rounded-[20px] bg-panel px-4 py-3 text-left transition-colors hover:bg-[var(--mind-variante)]"
       >
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[11px] font-medium tracking-wide text-texto-tenue uppercase">
-            Evento
-          </span>
+          <span className="text-[11px] font-medium tracking-wide text-texto-tenue uppercase">Evento</span>
           <span className="truncate text-[15px] font-semibold text-texto">{nombre}</span>
         </span>
         <Icono nombre="unfold_more" className="text-xl text-texto-tenue" />
       </button>
 
-      {!abierto ? null : (
-        <div className="entrar-escalonado absolute inset-x-0 top-full z-30 mt-2 flex flex-col gap-1 rounded-[24px] bg-fondo p-2 shadow-[0_0_0_1px_var(--bitacora-filete),0_12px_32px_-12px_rgb(0_0_0/0.25)]">
-          {eventos.map((evento) => (
-            <button
-              key={evento.id}
-              type="button"
-              onClick={() => {
-                elegirEvento(evento.nombre)
-                setAbierto(false)
-              }}
-              className={`flex cursor-pointer items-center justify-between gap-2 rounded-[16px] px-3 py-2.5 text-left text-sm transition-colors ${evento.nombre === nombre ? 'bg-acento text-acento-contraste' : 'hover:bg-panel'}`}
-            >
-              <span className="truncate font-medium">{evento.nombre}</span>
-              <span className="shrink-0 opacity-70">{evento.ponencias}</span>
-            </button>
-          ))}
-          <span className="my-1 h-px bg-filete" />
+      <Modal abierto={abierto} alCerrar={() => setAbierto(false)} titulo="Eventos" anclaje="disparador" anclaEn={boton} crecerHacia="desde-el-borde" ancho="angosto">
+        <div className="flex flex-col gap-1 pb-2">
+          {eventos.map((evento) => {
+            const actual = evento.nombre === nombre
+            return (
+              <button
+                key={evento.id}
+                type="button"
+                onClick={() => {
+                  elegirEvento(evento.nombre)
+                  setAbierto(false)
+                }}
+                className={`${fila} ${actual ? 'bg-[var(--mind-tonal)] font-semibold [color:var(--mind-tonal-texto)]' : 'hover:bg-panel'}`}
+              >
+                <Icono nombre={actual ? 'check_circle' : 'event'} relleno={actual} className="text-xl" />
+                <span className="min-w-0 flex-1 truncate">{evento.nombre}</span>
+                <span className="text-sm opacity-70">
+                  {evento.ponencias} {evento.ponencias === 1 ? 'ponencia' : 'ponencias'}
+                </span>
+              </button>
+            )
+          })}
+
+          <span className="mx-4 my-2 h-px bg-filete" />
+
           <button
             type="button"
             onClick={() => {
               setAbierto(false)
               void navegar('/evento')
             }}
-            className="flex cursor-pointer items-center gap-2 rounded-[16px] px-3 py-2.5 text-left text-sm hover:bg-panel"
+            className={`${fila} hover:bg-panel`}
           >
-            <Icono nombre="tune" className="text-lg" /> Configurar evento
+            <Icono nombre="tune" className="text-xl" /> Configurar {nombre}
           </button>
-          <div className="flex items-center gap-1 rounded-[16px] bg-panel py-1 pr-1 pl-3">
-            <input
-              value={nuevo}
-              onChange={(evento) => setNuevo(evento.target.value)}
-              placeholder="Nuevo evento"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-            <button
-              type="button"
-              disabled={nuevo.trim() === ''}
-              aria-label="Crear evento"
-              onClick={() => {
-                const nombreNuevo = nuevo.trim()
-                void crearEvento(nombreNuevo).then((resultado) => {
-                  if (resultado.ok) {
-                    elegirEvento(nombreNuevo)
-                    setNuevo('')
-                    setAbierto(false)
-                    void navegar('/evento')
+
+          {creando ? (
+            <div className="flex h-12 items-center gap-2 rounded-[24px] bg-panel py-1 pr-1 pl-4">
+              <Icono nombre="add" className="text-xl text-texto-tenue" />
+              <input
+                autoFocus
+                value={nuevo}
+                onChange={(evento) => setNuevo(evento.target.value)}
+                onKeyDown={(evento) => {
+                  if (evento.key === 'Enter' && nuevo.trim() !== '') {
+                    crear()
                   }
-                })
-              }}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-full bg-acento text-acento-contraste disabled:opacity-40"
-            >
-              <Icono nombre="add" className="text-lg" />
+                }}
+                placeholder="Nombre del evento"
+                className="min-w-0 flex-1 bg-transparent text-[15px] outline-none"
+              />
+              <button
+                type="button"
+                disabled={nuevo.trim() === ''}
+                onClick={crear}
+                className="flex h-10 cursor-pointer items-center rounded-full bg-acento px-4 text-sm font-medium text-acento-contraste disabled:opacity-40"
+              >
+                Crear
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setCreando(true)} className={`${fila} hover:bg-panel`}>
+              <Icono nombre="add" className="text-xl" /> Nuevo evento
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   )
 }
