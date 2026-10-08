@@ -1,25 +1,31 @@
+export type Tono = 'listo' | 'espera' | 'alerta' | 'neutro'
+
 import type { EstadoDeAprobacion, EstadoDeConsentimiento, Publicacion } from './tipos'
-import type { ColorDePildora } from '@/shared/ui'
 
 /*
-  Cómo se dice cada estado en la interfaz y con qué color de pastilla.
+  Cómo se dice cada estado en la interfaz y con qué tono de pastilla.
+
+  Tres tonos y no un color por estado, como la referencia: lo resuelto va
+  tonal, lo que espera a alguien va con contorno, y solo lo que bloquea va en
+  rojo. Cinco pasteles distintos lavaban la pantalla y obligaban a aprender
+  qué significaba cada color.
 
   Un solo sitio para las dos tablas porque el mismo estado aparece en el
   tablero, en la lista y en el panel de detalle, y que cambie de nombre según
   la pantalla haría dudar de si es el mismo.
 */
-export const CONSENTIMIENTO: Record<EstadoDeConsentimiento, { etiqueta: string; color: ColorDePildora }> = {
-  'sin-enviar': { etiqueta: 'Sin invitar', color: 'violeta' },
-  enviado: { etiqueta: 'Esperando respuesta', color: 'ambar' },
-  aceptado: { etiqueta: 'Consintió', color: 'verde' },
-  rechazado: { etiqueta: 'No consintió', color: 'rosa' },
+export const CONSENTIMIENTO: Record<EstadoDeConsentimiento, { etiqueta: string; tono: Tono }> = {
+  'sin-enviar': { etiqueta: 'Sin invitar', tono: 'neutro' },
+  enviado: { etiqueta: 'Esperando respuesta', tono: 'espera' },
+  aceptado: { etiqueta: 'Consintió', tono: 'listo' },
+  rechazado: { etiqueta: 'No consintió', tono: 'alerta' },
 }
 
-export const APROBACION: Record<EstadoDeAprobacion, { etiqueta: string; color: ColorDePildora }> = {
-  'sin-enviar': { etiqueta: 'Sin enviar', color: 'violeta' },
-  enviada: { etiqueta: 'En revisión del ponente', color: 'ambar' },
-  aprobada: { etiqueta: 'Aprobada', color: 'verde' },
-  'con-cambios': { etiqueta: 'Aprobada con cambios', color: 'azul' },
+export const APROBACION: Record<EstadoDeAprobacion, { etiqueta: string; tono: Tono }> = {
+  'sin-enviar': { etiqueta: 'Sin enviar', tono: 'neutro' },
+  enviada: { etiqueta: 'En revisión', tono: 'espera' },
+  aprobada: { etiqueta: 'Aprobada', tono: 'listo' },
+  'con-cambios': { etiqueta: 'Aprobada con cambios', tono: 'listo' },
 }
 
 export const RED: Record<Publicacion['red'], { etiqueta: string; icono: string }> = {
@@ -29,11 +35,11 @@ export const RED: Record<Publicacion['red'], { etiqueta: string; icono: string }
   facebook: { etiqueta: 'Facebook', icono: 'groups' },
 }
 
-export const ESTADO_DE_PUBLICACION: Record<Publicacion['estado'], { etiqueta: string; color: ColorDePildora }> = {
-  propuesta: { etiqueta: 'Propuesta', color: 'violeta' },
-  aprobada: { etiqueta: 'Aprobada', color: 'verde' },
-  programada: { etiqueta: 'Programada', color: 'azul' },
-  publicada: { etiqueta: 'Publicada', color: 'turquesa' },
+export const ESTADO_DE_PUBLICACION: Record<Publicacion['estado'], { etiqueta: string; tono: Tono }> = {
+  propuesta: { etiqueta: 'Propuesta', tono: 'neutro' },
+  aprobada: { etiqueta: 'Aprobada', tono: 'listo' },
+  programada: { etiqueta: 'Programada', tono: 'listo' },
+  publicada: { etiqueta: 'Publicada', tono: 'listo' },
 }
 
 /* Una ponencia cuenta para la memoria y la producción si su ponente la aprobó, con o sin cambios. */

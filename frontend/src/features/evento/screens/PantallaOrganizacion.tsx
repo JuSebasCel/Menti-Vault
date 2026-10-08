@@ -59,9 +59,6 @@ function Organizacion({ datos }: { datos: DatosDelEvento }): ReactElement {
         </Tarjeta>
         <Tarjeta className="flex flex-col gap-3">
           <span className="text-2xl text-texto-tenue">Correos del evento</span>
-          <p className="text-sm text-texto-tenue">
-            Las invitaciones a ponentes salen a nombre del evento, y las respuestas llegan al correo de la organización.
-          </p>
           <div className="mt-auto rounded-2xl bg-panel px-4 py-3 text-sm">{datos.evento.nombre} vía Menti Vault</div>
         </Tarjeta>
       </div>
@@ -88,7 +85,7 @@ function Organizacion({ datos }: { datos: DatosDelEvento }): ReactElement {
               </td>
               <td className="px-3 py-2.5">Administrador</td>
               <td className="px-3 py-2.5">
-                <Estado etiqueta="Activo" color="verde" />
+                <Estado etiqueta="Activo" tono="listo" />
               </td>
             </tr>
           </tbody>
@@ -133,7 +130,7 @@ function InvitarMiembro({ alTerminar }: { alTerminar: () => void }): ReactElemen
           value={correo}
           onChange={(evento) => setCorreo(evento.target.value)}
           placeholder="Ej. coordinacion@universidad.edu.co"
-          className="h-12 rounded-2xl bg-panel px-4 text-base outline-none shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] focus:shadow-[0_0_0_3px_#e0e6f8,0_0_0_1px_var(--bitacora-filete-fuerte)]"
+          className="h-12 rounded-2xl bg-panel px-4 text-base outline-none shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] focus:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]"
         />
       </label>
       <div className="flex flex-col gap-2">

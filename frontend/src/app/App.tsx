@@ -11,6 +11,8 @@ import { PantallaMemoriasDelEvento } from '@/features/evento/screens/PantallaMem
 import { PantallaProduccion } from '@/features/evento/screens/PantallaProduccion'
 import { PantallaPublicaciones } from '@/features/evento/screens/PantallaPublicaciones'
 import { PantallaOrganizacion } from '@/features/evento/screens/PantallaOrganizacion'
+import { PantallaAgenda } from '@/features/evento/screens/PantallaAgenda'
+import { PantallaAjustes } from '@/features/evento/screens/PantallaAjustes'
 import { RutaProtegida } from '@/app/RutaProtegida'
 import { CompuertaDelSitio } from '@/app/CompuertaDelSitio'
 import { RutaPublica } from '@/app/RutaPublica'
@@ -64,9 +66,14 @@ export function App(): ReactElement {
                 <Route path="/ponentes" element={<PantallaPonentes />} />
                 <Route path="/ponencias" element={<PantallaPonencias />} />
                 <Route path="/memorias-del-evento" element={<PantallaMemoriasDelEvento />} />
-                <Route path="/produccion" element={<PantallaProduccion />} />
-                <Route path="/publicaciones" element={<PantallaPublicaciones />} />
+                <Route path="/agenda" element={<PantallaAgenda />} />
+                <Route path="/articulos" element={<PantallaProduccion />} />
+                <Route path="/redes" element={<PantallaPublicaciones />} />
                 <Route path="/organizacion" element={<PantallaOrganizacion />} />
+                <Route path="/ajustes" element={<PantallaAjustes />} />
+                {/* Los nombres anteriores, por si quedó algún enlace. */}
+                <Route path="/produccion" element={<Navigate to="/articulos" replace />} />
+                <Route path="/publicaciones" element={<Navigate to="/redes" replace />} />
               </Route>
               <Route element={<ShellLayout />}>
                 <Route path="/conferencias" element={<PantallaConferencias />} />

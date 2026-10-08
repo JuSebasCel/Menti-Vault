@@ -128,7 +128,7 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
                         setOrigen(evento.currentTarget.getBoundingClientRect())
                         cambiar('ver', ponente.id)
                       }}
-                      className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-3 font-medium transition-colors hover:bg-acento-tenue"
+                      className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-3 font-medium transition-colors hover:bg-[var(--mind-neutro)]"
                     >
                       <Icono nombre="arrow_outward" className="text-base" />
                       Abrir
@@ -222,9 +222,7 @@ function DetalleDelPonente({ ponente, datos }: { ponente: Ponente; datos: DatosD
             </ul>
           ) : (
             <p className="text-sm text-texto-tenue">
-              {ponente.consentimiento === 'enviado'
-                ? 'Recibió la invitación y todavía no responde. Hasta que lo haga, su ponencia no entra a la memoria ni a la producción académica.'
-                : 'Todavía no se le ha enviado la invitación.'}
+              {ponente.consentimiento === 'enviado' ? 'Sin respuesta todavía.' : 'Sin invitar.'}
             </p>
           )}
           <div className="grid grid-cols-3 gap-4">

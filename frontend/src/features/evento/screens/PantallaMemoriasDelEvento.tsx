@@ -1,22 +1,42 @@
 import type { ReactElement } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
 import { APROBACION, estaAprobada, fechaYHora } from '../formato'
+import { direccionDeArchivo } from '../repositorio'
 import type { DatosDelEvento, Memoria } from '../tipos'
 
 /*
-  Los entregables escritos del evento: la memoria general, armada solo con
-  lo que los ponentes aprobaron, y la memoria de cada ponencia.
+  Los entregables escritos del evento: la memoria general —un documento
+  propio, con presentación, ejes, síntesis y conclusiones, no la suma de las
+  sesiones— y la memoria de cada ponencia. Todas con el mismo formato.
 
-  La general dice cuántas ponencias lleva y cuáles faltan. Sin eso, un
-  documento con seis de ocho charlas parecería completo, y el organizador
-  descubriría el hueco cuando ya lo hubiera enviado.
+  Cada memoria se reconoce por su primera página real, generada una vez y
+  guardada junto al PDF (`miniatura.png`): un dibujo genérico de "documento"
+  no distinguía una memoria de otra.
 */
 export function PantallaMemoriasDelEvento(): ReactElement {
   return <CargaDelEvento>{(datos) => <Memorias datos={datos} />}</CargaDelEvento>
+}
+
+function rutaDeMiniatura(rutaPdf: string): string {
+  return `${rutaPdf.slice(0, rutaPdf.lastIndexOf('/'))}/miniatura.png`
+}
+
+function Miniatura({ rutaPdf, titulo }: { rutaPdf: string; titulo: string }): ReactElement {
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    void direccionDeArchivo(rutaDeMiniatura(rutaPdf)).then(setUrl)
+  }, [rutaPdf])
+
+  return (
+    <span className="block aspect-[3/4] overflow-hidden rounded-[16px] bg-panel shadow-[0_0_0_1px_var(--bitacora-filete)]">
+      {url === null ? null : <img src={url} alt={`Primera página de ${titulo}`} className="size-full object-cover object-top" loading="lazy" />}
+    </span>
+  )
 }
 
 function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
@@ -25,8 +45,7 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   const general = datos.memorias.find((memoria) => memoria.alcance === 'evento')
   const porPonencia = datos.memorias.filter((memoria) => memoria.alcance === 'ponencia' && memoria.archivoPdf !== null)
-  const incluidas = datos.ponencias.filter((ponencia) => estaAprobada(ponencia.aprobacion))
-  const faltan = datos.ponencias.filter((ponencia) => !estaAprobada(ponencia.aprobacion))
+  const incluidas = datos.ponencias.filter((ponencia) => estaAprobada(ponencia.aprobacion)).length
 
   const abrir = (memoria: Memoria, boton: HTMLElement): void => {
     setOrigen(boton.getBoundingClientRect())
@@ -37,48 +56,29 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Memorias" />
 
-      <div className="entrar-escalonado grid grid-cols-3 gap-2">
-        {general === undefined ? null : (
-          <Tarjeta variante="rellena" className="col-span-2 flex flex-col justify-between gap-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-1">
-                <span className="text-2xl font-semibold">Memoria general</span>
-                <span className="text-sm text-texto-tenue">{general.nombre}</span>
-              </div>
-              <span className="flex size-12 items-center justify-center rounded-full bg-acento text-acento-contraste">
-                <Icono nombre="menu_book" className="text-2xl" />
+      {general?.archivoPdf == null ? null : (
+        <Tarjeta variante="rellena" className="entrar-escalonado flex gap-6">
+          <button type="button" onClick={(evento) => abrir(general, evento.currentTarget)} className="w-44 shrink-0 cursor-pointer">
+            <Miniatura rutaPdf={general.archivoPdf} titulo={general.nombre} />
+          </button>
+          <div className="flex flex-1 flex-col justify-between gap-4 py-1">
+            <div className="flex flex-col gap-1">
+              <span className="text-2xl font-semibold">Memoria general</span>
+              <span className="text-sm text-texto-tenue">{datos.evento.nombre} · FormatoReducate2026</span>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="text-base leading-none font-medium opacity-80">Incluye</span>
+              <span className="text-[45px] leading-none font-semibold">
+                {incluidas} de {datos.ponencias.length} sesiones
               </span>
             </div>
-            <div className="flex items-end justify-between gap-4">
-              <div className="flex flex-col gap-2">
-                <span className="text-[45px] leading-none font-semibold">
-                  {incluidas.length} de {datos.ponencias.length}
-                </span>
-                <span className="text-sm text-texto-tenue">
-                  ponencias aprobadas incluidas
-                  {faltan.length === 0 ? '' : ` · faltan ${faltan.map((ponencia) => ponencia.ponente.split(' ')[0]).join(' y ')}, en revisión`}
-                </span>
-              </div>
-              <BotonMind icono="open_in_new" onClick={(evento) => abrir(general, evento.currentTarget)}>
-                Abrir
-              </BotonMind>
-            </div>
-          </Tarjeta>
-        )}
-
-        <Tarjeta className="flex flex-col justify-between gap-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-2xl text-texto-tenue">Formato</span>
-            <span className="text-sm text-texto-tenue">La plantilla de la institución con la que se redactan</span>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-panel px-4 py-3">
-            <Icono nombre="description" className="text-2xl" />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">FormatoReducate2026.docx</span>
+            <BotonMind icono="open_in_new" className="w-fit" onClick={(evento) => abrir(general, evento.currentTarget)}>
+              Abrir
+            </BotonMind>
           </div>
         </Tarjeta>
-      </div>
+      )}
 
-      <h2 className="px-1 pt-2 text-sm font-medium text-texto-tenue">Por ponencia</h2>
       <div className="entrar-escalonado grid grid-cols-4 gap-2">
         {porPonencia.map((memoria) => {
           const ponencia = datos.ponencias.find((una) => una.id === memoria.idConferencia)
@@ -87,20 +87,15 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
               key={memoria.id}
               type="button"
               onClick={(evento) => abrir(memoria, evento.currentTarget)}
-              className="tarjeta-borde flex cursor-pointer flex-col gap-4 rounded-[24px] bg-fondo p-4 text-left transition-colors hover:bg-panel"
+              className="tarjeta-borde flex cursor-pointer flex-col gap-3 rounded-[24px] bg-fondo p-3 text-left transition-colors hover:bg-panel"
             >
-              {/* Una hoja en miniatura: dice "documento" antes de leer nada. */}
-              <span className="flex aspect-[3/2] flex-col gap-1.5 rounded-2xl bg-panel p-4">
-                <span className="h-2 w-2/3 rounded-full bg-filete-fuerte" />
-                <span className="h-1.5 w-full rounded-full bg-filete" />
-                <span className="h-1.5 w-full rounded-full bg-filete" />
-                <span className="h-1.5 w-4/5 rounded-full bg-filete" />
-                <span className="mt-auto h-1.5 w-1/2 rounded-full bg-filete" />
-              </span>
-              <span className="line-clamp-2 text-[15px] leading-snug font-medium">{ponencia?.titulo ?? memoria.nombre}</span>
-              <span className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm text-texto-tenue">{ponencia?.ponente}</span>
-                {ponencia === undefined ? null : <Estado {...APROBACION[ponencia.aprobacion]} />}
+              {memoria.archivoPdf === null ? null : <Miniatura rutaPdf={memoria.archivoPdf} titulo={memoria.nombre} />}
+              <span className="flex flex-col gap-2 px-1 pb-1">
+                <span className="line-clamp-2 text-[15px] leading-snug font-medium">{ponencia?.titulo ?? memoria.nombre}</span>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm text-texto-tenue">{ponencia?.ponente}</span>
+                  {ponencia === undefined ? null : <Estado {...APROBACION[ponencia.aprobacion]} />}
+                </span>
               </span>
             </button>
           )
@@ -112,7 +107,10 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
           <div className="entrar-escalonado flex flex-col gap-2 pt-2">
             <div className="flex flex-col gap-1 px-2 pb-2">
               <span className="text-2xl font-medium">{abierta.nombre}</span>
-              <span className="text-sm text-texto-tenue">Generada el {fechaYHora(abierta.generadaEl)}</span>
+              <span className="flex items-center gap-1.5 text-sm text-texto-tenue">
+                <Icono nombre="schedule" relleno={false} className="text-base" />
+                {fechaYHora(abierta.generadaEl)}
+              </span>
             </div>
             <VisorDePdf ruta={abierta.archivoPdf} rutaDocx={abierta.archivoDocx} titulo={abierta.nombre} />
           </div>

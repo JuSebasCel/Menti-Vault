@@ -1,192 +1,208 @@
 import type { ReactElement } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useSession } from '@/features/auth/session'
-import { BotonMind, Cifra, EncabezadoDePagina, Icono, Tarjeta } from '../components/piezas'
 import { CargaDelEvento } from '../components/CargaDelEvento'
-import { estaAprobada, fecha } from '../formato'
+import { BotonMind, Chip, EncabezadoDePagina, Icono, Tarjeta, Vacio } from '../components/piezas'
+import { estaAprobada } from '../formato'
 import type { DatosDelEvento } from '../tipos'
 
 /*
-  El panel del evento. Responde de un vistazo a lo que un organizador
-  pregunta primero: a quién le falta consentir, qué textos siguen en
-  revisión y qué está listo para entregar.
+  El inicio, con la misma forma que el de Melon Mind: saludo con la cifra
+  grande, dos tarjetas de "cómo va" a la derecha, las sesiones del día con
+  chips debajo y, al lado, las solicitudes —lo que espera una respuesta de
+  alguien—.
 
-  El ciclo va de izquierda a derecha en el orden real del trabajo, y cada
-  paso cuenta solo lo que el anterior dejó pasar: una ponencia sin
-  aprobación no cuenta para la memoria, igual que en la base no entra.
+  Las solicitudes reemplazan al ciclo en pasos de la versión anterior: un
+  evento no avanza en orden de casilla en casilla, y lo que el organizador
+  necesita al abrir es saber a quién tiene que perseguir hoy.
 */
 export function PantallaInicio(): ReactElement {
   return <CargaDelEvento>{(datos) => <Inicio datos={datos} />}</CargaDelEvento>
 }
 
+const HOY = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
+const DIA_CORTO = new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric' })
+
+type Solicitud = { id: string; icono: string; titulo: string; detalle: string; ruta: string }
+
 function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
   const { usuario } = useSession()
   const navegar = useNavigate()
-  const { evento, ponentes, ponencias, memorias, producciones, publicaciones } = datos
+  const { ponentes, ponencias, memorias, producciones } = datos
 
-  const consintieron = ponentes.filter((ponente) => ponente.consentimiento === 'aceptado').length
-  const esperando = ponentes.filter((ponente) => ponente.consentimiento === 'enviado')
-  const aprobadas = ponencias.filter((ponencia) => estaAprobada(ponencia.aprobacion)).length
-  const enRevision = ponencias.filter((ponencia) => ponencia.aprobacion === 'enviada')
-  const memoriaGeneral = memorias.find((memoria) => memoria.alcance === 'evento')
-  const programadas = publicaciones.filter((publicacion) => publicacion.estado === 'programada').length
+  const dias = useMemo(() => [...new Set(ponencias.map((ponencia) => ponencia.fecha))].sort(), [ponencias])
+  const [dia, setDia] = useState(dias[0] ?? '')
 
-  const ciclo = [
-    { icono: 'verified_user', titulo: 'Consentimiento', valor: `${consintieron}/${ponentes.length}`, ruta: '/ponentes' },
-    { icono: 'graphic_eq', titulo: 'Transcripción', valor: `${ponencias.length}/${ponencias.length}`, ruta: '/ponencias' },
-    { icono: 'description', titulo: 'Memorias', valor: `${memorias.filter((memoria) => memoria.alcance === 'ponencia').length}`, ruta: '/memorias-del-evento' },
-    { icono: 'task_alt', titulo: 'Aprobación', valor: `${aprobadas}/${ponencias.length}`, ruta: '/ponencias' },
-    { icono: 'school', titulo: 'Producción', valor: `${producciones.length}`, ruta: '/produccion' },
-    { icono: 'campaign', titulo: 'Difusión', valor: `${publicaciones.length}`, ruta: '/publicaciones' },
+  const porAprobar = ponencias.filter((ponencia) => !estaAprobada(ponencia.aprobacion)).length
+  const sinConsentir = ponentes.filter((ponente) => ponente.consentimiento !== 'aceptado').length
+  const general = memorias.find((memoria) => memoria.alcance === 'evento')
+
+  const solicitudes: Solicitud[] = [
+    ...ponentes
+      .filter((ponente) => ponente.consentimiento === 'enviado')
+      .map((ponente) => ({
+        id: ponente.id,
+        icono: 'mark_email_unread',
+        titulo: ponente.nombre,
+        detalle: 'No ha respondido la invitación',
+        ruta: `/ponentes?ver=${ponente.id}`,
+      })),
+    ...ponencias
+      .filter((ponencia) => ponencia.aprobacion === 'enviada')
+      .map((ponencia) => ({
+        id: ponencia.id,
+        icono: 'rate_review',
+        titulo: ponencia.titulo,
+        detalle: `En revisión de ${ponencia.ponente}`,
+        ruta: `/ponencias?ver=${ponencia.id}`,
+      })),
+    ...ponencias
+      .filter((ponencia) => ponencia.comentarioDelPonente !== '')
+      .map((ponencia) => ({
+        id: `${ponencia.id}-cambios`,
+        icono: 'edit_note',
+        titulo: ponencia.titulo,
+        detalle: `${ponencia.ponente.split(' ')[0] ?? ''} pidió un cambio`,
+        ruta: `/ponencias?ver=${ponencia.id}`,
+      })),
   ]
 
   return (
-    <div className="flex flex-col gap-4">
-      <EncabezadoDePagina titulo="Inicio">
-        <BotonMind icono="person_add" onClick={() => void navegar('/ponentes?invitar=1')}>
-          Invitar ponente
-        </BotonMind>
-      </EncabezadoDePagina>
+    <div className="flex flex-1 flex-col gap-2">
+      <div className="pb-2">
+        <EncabezadoDePagina titulo="Inicio">
+          <BotonMind icono="add" onClick={() => void navegar('/agenda?nueva=1')}>
+            Crear
+          </BotonMind>
+        </EncabezadoDePagina>
+      </div>
 
       <div className="entrar-escalonado grid grid-cols-3 gap-2">
-        <Tarjeta variante="rellena" className="flex flex-col justify-between gap-6">
-          <div className="flex flex-col gap-1">
+        <Tarjeta variante="rellena" className="relative flex flex-col gap-6">
+          <div className="flex flex-col">
             <span className="text-2xl font-semibold">Hola {usuario?.nombre.split(' ')[0] ?? ''}</span>
-            <span className="text-sm text-texto-tenue">
-              {evento.nombre} · {fecha(evento.fechaInicio)} al {fecha(evento.fechaFin)} · {evento.lugar}
-            </span>
+            <span className="text-sm text-texto-tenue first-letter:uppercase">{HOY.format(new Date())}</span>
           </div>
-          <Cifra rotulo="El evento tiene" valor={`${ponencias.length} ponencias`} detalle={`${ponentes.length} ponentes`} />
+          <div className="flex flex-col gap-3">
+            <span className="text-base leading-none font-medium opacity-80">El evento tiene</span>
+            <span className="text-[45px] leading-none font-semibold">{ponencias.length} ponencias</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void navegar('/agenda')}
+            aria-label="Abrir la agenda"
+            className="absolute right-4 bottom-4 flex size-12 cursor-pointer items-center justify-center rounded-full bg-acento text-acento-contraste transition-transform hover:scale-105"
+          >
+            <Icono nombre="calendar_month" className="text-2xl" />
+          </button>
         </Tarjeta>
 
-        <Tarjeta className="flex flex-col justify-between gap-6">
-          <span className="text-2xl text-texto-tenue">Consentimientos</span>
-          <Cifra
-            rotulo="Aceptados"
-            valor={`${consintieron} de ${ponentes.length}`}
-            detalle={esperando.length === 0 ? 'Nadie pendiente' : `${esperando.length} esperando respuesta`}
-          />
+        <Tarjeta className="flex flex-col justify-center gap-1">
+          <span className="text-2xl text-texto-tenue">Por aprobar:</span>
+          <span className="text-2xl font-semibold">
+            {porAprobar === 0 ? 'Todo aprobado' : `${porAprobar} ${porAprobar === 1 ? 'ponencia' : 'ponencias'}`}
+          </span>
         </Tarjeta>
 
-        <Tarjeta className="flex flex-col justify-between gap-6">
-          <span className="text-2xl text-texto-tenue">Aprobaciones</span>
-          <Cifra
-            rotulo="Textos aprobados"
-            valor={`${aprobadas} de ${ponencias.length}`}
-            detalle={enRevision.length === 0 ? 'Todo aprobado' : `${enRevision.length} en revisión del ponente`}
-          />
+        <Tarjeta className="flex flex-col justify-center gap-1">
+          <span className="text-2xl text-texto-tenue">Sin consentimiento:</span>
+          <span className="text-2xl font-semibold">
+            {sinConsentir === 0 ? 'Nadie' : `${sinConsentir} ${sinConsentir === 1 ? 'ponente' : 'ponentes'}`}
+          </span>
         </Tarjeta>
       </div>
 
-      {/* El ciclo editorial entero, en el orden del trabajo. */}
-      <Tarjeta className="entrar-escalonado flex flex-col gap-5">
-        <span className="text-2xl">Ciclo del evento</span>
-        <ol className="grid grid-cols-6 gap-2">
-          {ciclo.map((paso, indice) => (
-            <li key={paso.titulo}>
-              <button
-                type="button"
-                onClick={() => void navegar(paso.ruta)}
-                className="group flex w-full cursor-pointer flex-col gap-3 rounded-[20px] bg-panel p-4 text-left transition-colors hover:bg-acento-tenue"
-              >
-                <span className="flex items-center justify-between">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-acento text-acento-contraste">
-                    <Icono nombre={paso.icono} className="text-xl" />
-                  </span>
-                  <span className="text-xs text-texto-tenue">Paso {indice + 1}</span>
-                </span>
-                <span className="text-sm text-texto-tenue">{paso.titulo}</span>
-                <span className="text-[28px] leading-none font-semibold">{paso.valor}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      </Tarjeta>
-
-      <div className="entrar-escalonado grid grid-cols-2 gap-2">
-        <Tarjeta className="flex flex-col gap-4">
-          <span className="text-2xl">Pendiente</span>
-          <ul className="flex flex-col gap-2">
-            {esperando.map((ponente) => (
-              <FilaPendiente
-                key={ponente.id}
-                icono="mark_email_unread"
-                texto={`${ponente.nombre} no ha respondido la invitación`}
-                accion="Ver"
-                alPulsar={() => void navegar(`/ponentes?ver=${ponente.id}`)}
-              />
-            ))}
-            {enRevision.map((ponencia) => (
-              <FilaPendiente
-                key={ponencia.id}
-                icono="rate_review"
-                texto={`«${ponencia.titulo}» sigue en revisión de ${ponencia.ponente}`}
-                accion="Ver"
-                alPulsar={() => void navegar(`/ponencias?ver=${ponencia.id}`)}
-              />
-            ))}
-            {esperando.length + enRevision.length === 0 ? (
-              <li className="text-sm text-texto-tenue">No hay nada pendiente.</li>
-            ) : null}
-          </ul>
+      <div className="entrar-escalonado grid flex-1 grid-cols-3 gap-2">
+        <Tarjeta className="flex flex-col gap-4 p-2">
+          <div className="flex flex-col gap-3 px-4 pt-4">
+            <span className="text-2xl font-medium">Sesiones</span>
+            <div className="flex gap-2">
+              {dias.map((uno) => (
+                <Chip key={uno} elegido={dia === uno} onClick={() => setDia(uno)}>
+                  <span className="capitalize">{DIA_CORTO.format(new Date(`${uno}T12:00:00`))}</span>
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <ol key={dia} className="entrar-escalonado flex flex-col gap-1">
+            {ponencias
+              .filter((ponencia) => ponencia.fecha === dia)
+              .map((ponencia) => (
+                <li key={ponencia.id}>
+                  <button
+                    type="button"
+                    onClick={() => void navegar(`/ponencias?ver=${ponencia.id}`)}
+                    className="flex w-full cursor-pointer gap-3 rounded-[16px] px-4 py-3 text-left transition-colors hover:bg-panel"
+                  >
+                    <span className="w-11 shrink-0 font-mono text-sm">{ponencia.horaInicio ?? '—'}</span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-[15px] font-medium">{ponencia.titulo}</span>
+                      <span className="truncate text-sm text-texto-tenue">{ponencia.ponente}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+          </ol>
         </Tarjeta>
 
-        <Tarjeta className="flex flex-col gap-4">
-          <span className="text-2xl">Listo para entregar</span>
-          <ul className="flex flex-col gap-2">
-            {memoriaGeneral === undefined ? null : (
-              <FilaPendiente
-                icono="menu_book"
-                texto="Memoria general del evento"
-                accion="Abrir"
-                alPulsar={() => void navegar('/memorias-del-evento')}
-              />
-            )}
-            {producciones.map((produccion) => (
-              <FilaPendiente
-                key={produccion.id}
-                icono="article"
-                texto={produccion.titulo}
-                accion="Abrir"
-                alPulsar={() => void navegar(`/produccion?ver=${produccion.id}`)}
-              />
-            ))}
-            <FilaPendiente
-              icono="campaign"
-              texto={`${publicaciones.length} publicaciones para redes · ${programadas} programadas`}
-              accion="Ver"
-              alPulsar={() => void navegar('/publicaciones')}
-            />
-          </ul>
+        <Tarjeta className="col-span-2 flex flex-col gap-4 p-2">
+          <div className="flex flex-col gap-3 px-4 pt-4">
+            <span className="text-2xl font-medium">Solicitudes</span>
+          </div>
+          {solicitudes.length === 0 ? (
+            <Vacio icono="checklist" texto="No hay solicitudes" />
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {solicitudes.map((solicitud) => (
+                <li key={solicitud.id}>
+                  <button
+                    type="button"
+                    onClick={() => void navegar(solicitud.ruta)}
+                    className="flex w-full cursor-pointer items-center gap-4 rounded-[16px] px-4 py-3 text-left transition-colors hover:bg-panel"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste">
+                      <Icono nombre={solicitud.icono} className="text-xl" />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[15px] font-medium">{solicitud.titulo}</span>
+                      <span className="text-sm text-texto-tenue">{solicitud.detalle}</span>
+                    </span>
+                    <Icono nombre="arrow_outward" className="text-lg" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-auto grid grid-cols-2 gap-2 p-2">
+            <button
+              type="button"
+              onClick={() => void navegar('/memorias-del-evento')}
+              className="flex cursor-pointer items-center gap-3 rounded-[20px] bg-panel p-4 text-left transition-colors hover:bg-[var(--mind-neutro)]"
+            >
+              <Icono nombre="menu_book" className="text-2xl" />
+              <span className="flex min-w-0 flex-col">
+                <span className="font-medium">Memoria general</span>
+                <span className="truncate text-sm text-texto-tenue">{general === undefined ? 'Sin generar' : 'Lista para entregar'}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void navegar('/articulos')}
+              className="flex cursor-pointer items-center gap-3 rounded-[20px] bg-panel p-4 text-left transition-colors hover:bg-[var(--mind-neutro)]"
+            >
+              <Icono nombre="school" className="text-2xl" />
+              <span className="flex min-w-0 flex-col">
+                <span className="font-medium">Artículos</span>
+                <span className="truncate text-sm text-texto-tenue">
+                  {producciones.length} {producciones.length === 1 ? 'listo' : 'listos'}
+                </span>
+              </span>
+            </button>
+          </div>
         </Tarjeta>
       </div>
     </div>
-  )
-}
-
-function FilaPendiente({
-  icono,
-  texto,
-  accion,
-  alPulsar,
-}: {
-  icono: string
-  texto: string
-  accion: string
-  alPulsar: () => void
-}): ReactElement {
-  return (
-    <li className="flex items-center gap-3 rounded-2xl bg-panel py-2 pr-2 pl-4">
-      <Icono nombre={icono} relleno={false} className="text-xl text-texto-tenue" />
-      <span className="min-w-0 flex-1 truncate text-sm">{texto}</span>
-      <button
-        type="button"
-        onClick={alPulsar}
-        className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full px-3 text-sm font-medium transition-colors hover:bg-acento-tenue"
-      >
-        <Icono nombre="arrow_outward" className="text-base" />
-        {accion}
-      </button>
-    </li>
   )
 }

@@ -78,6 +78,12 @@ function mapearPonencia(fila: Fila): Ponencia {
     aprobadaEl: textoONulo(fila['aprobacion_respondida_el']),
     comentarioDelPonente: texto(fila['comentario_del_ponente']),
     idDueno: texto(fila['id_dueno']),
+    horaInicio: textoONulo(fila['hora_inicio'])?.slice(0, 5) ?? null,
+    horaFin: textoONulo(fila['hora_fin'])?.slice(0, 5) ?? null,
+    sala: texto(fila['sala']),
+    tipo: (texto(fila['tipo_de_sesion']) || 'conferencia') as Ponencia['tipo'],
+    eje: texto(fila['eje']),
+    tieneTranscripcion: texto(fila['estado']) === 'procesada',
   }
 }
 
@@ -162,7 +168,12 @@ export async function cargarEvento(nombre: string): Promise<ResultadoDeConsulta<
 
   const [ponentes, ponencias, memorias, producciones, publicaciones] = await Promise.all([
     supabase.from('ponentes').select('*').eq('id_evento', evento.id).order('nombre'),
-    supabase.from('conferencias').select('*').eq('evento', nombre).order('orden_en_el_evento'),
+    supabase
+      .from('conferencias')
+      .select('*')
+      .eq('evento', nombre)
+      .order('fecha_del_evento')
+      .order('hora_inicio', { nullsFirst: false }),
     supabase.from('memorias').select('*').eq('evento', nombre).order('generada_el'),
     supabase.from('producciones').select('*').eq('evento', nombre).order('creada_el', { ascending: false }),
     supabase.from('publicaciones').select('*').eq('evento', nombre).order('programada_para'),
@@ -269,5 +280,71 @@ export async function crearPonenteInvitado(
 
 export async function pedirAprobacion(idConferencia: string): Promise<ResultadoDeConsulta<null>> {
   const { error } = await supabase.from('conferencias').update({ aprobacion: 'enviada' }).eq('id', idConferencia)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+export async function actualizarEvento(
+  idEvento: string,
+  cambios: { descripcion: string; lugar: string; fechaInicio: string; fechaFin: string },
+): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase
+    .from('eventos')
+    .update({
+      descripcion: cambios.descripcion,
+      lugar: cambios.lugar,
+      fecha_inicio: cambios.fechaInicio || null,
+      fecha_fin: cambios.fechaFin || null,
+    })
+    .eq('id', idEvento)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+export type CambiosDeSesion = {
+  readonly titulo: string
+  readonly ponente: string
+  readonly fecha: string
+  readonly horaInicio: string
+  readonly horaFin: string
+  readonly sala: string
+  readonly tipo: Ponencia['tipo']
+  readonly eje: string
+}
+
+function filaDeSesion(cambios: CambiosDeSesion): Record<string, unknown> {
+  return {
+    titulo: cambios.titulo,
+    ponente: cambios.ponente,
+    fecha_del_evento: cambios.fecha,
+    hora_inicio: cambios.horaInicio || null,
+    hora_fin: cambios.horaFin || null,
+    sala: cambios.sala,
+    tipo_de_sesion: cambios.tipo,
+    eje: cambios.eje,
+  }
+}
+
+export async function actualizarSesion(idConferencia: string, cambios: CambiosDeSesion): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('conferencias').update(filaDeSesion(cambios)).eq('id', idConferencia)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/*
+  Una sesión nueva entra en la agenda antes de tener grabación: queda en
+  cola, sin duración, y la ponencia se completa cuando se suba el audio.
+*/
+export async function crearSesion(
+  idDueno: string,
+  evento: string,
+  cambios: CambiosDeSesion,
+): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('conferencias').insert({
+    ...filaDeSesion(cambios),
+    evento,
+    codigo_de_evento: evento.toUpperCase().replace(/[^A-Z0-9]+/g, '-'),
+    id_dueno: idDueno,
+    estado: 'en-cola',
+    fuente: 'audio',
+    duracion_en_segundos: 0,
+  })
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }

@@ -5,35 +5,39 @@ import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDe
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
-import { BotonMind, Chip, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { APROBACION, duracion, fecha, fechaYHora, minuto } from '../formato'
+import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
+import { APROBACION, duracion, estaAprobada, fecha, fechaYHora, minuto } from '../formato'
 import { leerTranscripcion } from '../repositorio'
 import type { DatosDelEvento, Ponencia, Segmento } from '../tipos'
 
 /*
-  Las ponencias del evento, agrupadas como el evento las agrupa.
+  Las ponencias del evento en una sola lista, como la tabla de pacientes de
+  la referencia, ordenadas por cuándo ocurrieron.
 
-  La agrupación es texto libre (jornada, eje, mesa): se respeta el orden en
-  que aparecen y no se ordenan alfabéticamente, porque "Día 1 · Tarde" va
-  después de "Día 1 · Mañana" aunque el alfabeto diga lo contrario.
+  Se filtran con chips por día y por estado en vez de partirse en bloques: la
+  estructura del evento vive en la agenda, y repetirla aquí como encabezados
+  obligaba a recorrer la pantalla entera para comparar dos charlas.
 */
 export function PantallaPonencias(): ReactElement {
   return <CargaDelEvento>{(datos) => <Ponencias datos={datos} />}</CargaDelEvento>
 }
 
+const DIA_CORTO = new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric' })
+
 function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
   const [origen, setOrigen] = useState<DOMRect | null>(null)
+  const [dia, setDia] = useState<string | null>(null)
+  const [estado, setEstado] = useState<'todas' | 'aprobadas' | 'revision'>('todas')
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
 
-  const grupos = useMemo(() => {
-    const porGrupo = new Map<string, Ponencia[]>()
-    for (const ponencia of datos.ponencias) {
-      const clave = ponencia.agrupacion || 'Sin agrupar'
-      porGrupo.set(clave, [...(porGrupo.get(clave) ?? []), ponencia])
-    }
-    return [...porGrupo.entries()]
-  }, [datos.ponencias])
+  const dias = useMemo(() => [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort(), [datos.ponencias])
+  const visibles = datos.ponencias.filter(
+    (ponencia) =>
+      (dia === null || ponencia.fecha === dia) &&
+      (estado === 'todas' ||
+        (estado === 'aprobadas' ? estaAprobada(ponencia.aprobacion) : !estaAprobada(ponencia.aprobacion))),
+  )
 
   const ver = (id: string | null): void => {
     const siguientes = new URLSearchParams(parametros)
@@ -49,40 +53,91 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Ponencias" />
 
-      <div className="entrar-escalonado flex flex-col gap-4">
-        {grupos.map(([grupo, ponencias]) => (
-          <section key={grupo} className="flex flex-col gap-2">
-            <h2 className="px-1 text-sm font-medium text-texto-tenue">{grupo}</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {ponencias.map((ponencia) => (
-                <button
-                  key={ponencia.id}
-                  type="button"
-                  onClick={(evento) => {
-                    setOrigen(evento.currentTarget.getBoundingClientRect())
-                    ver(ponencia.id)
-                  }}
-                  className="tarjeta-borde flex cursor-pointer flex-col gap-4 rounded-[24px] bg-fondo p-5 text-left transition-colors hover:bg-panel"
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="line-clamp-2 text-lg leading-snug font-medium">{ponencia.titulo}</span>
-                    <Estado {...APROBACION[ponencia.aprobacion]} />
-                  </span>
-                  <span className="flex items-center gap-4 text-sm text-texto-tenue">
-                    <span className="flex items-center gap-1.5">
-                      <Icono nombre="person" relleno={false} className="text-lg" />
-                      {ponencia.ponente}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Icono nombre="schedule" relleno={false} className="text-lg" />
-                      {duracion(ponencia.duracionEnSegundos)}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
+      <div className="entrar-escalonado grid grid-cols-4 gap-2">
+        <Tarjeta variante="rellena">
+          <Cifra rotulo="Totales" valor={datos.ponencias.length} />
+        </Tarjeta>
+        <Tarjeta variante="rellena">
+          <Cifra rotulo="Transcritas" valor={datos.ponencias.filter((ponencia) => ponencia.tieneTranscripcion).length} />
+        </Tarjeta>
+        <Tarjeta variante="rellena">
+          <Cifra rotulo="Aprobadas" valor={datos.ponencias.filter((ponencia) => estaAprobada(ponencia.aprobacion)).length} />
+        </Tarjeta>
+        <Tarjeta variante="rellena">
+          <Cifra rotulo="En revisión" valor={datos.ponencias.filter((ponencia) => ponencia.aprobacion === 'enviada').length} />
+        </Tarjeta>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Chip elegido={dia === null} onClick={() => setDia(null)}>
+          Todos los días
+        </Chip>
+        {dias.map((uno) => (
+          <Chip key={uno} elegido={dia === uno} onClick={() => setDia(uno)}>
+            <span className="capitalize">{DIA_CORTO.format(new Date(`${uno}T12:00:00`))}</span>
+          </Chip>
         ))}
+        <span className="mx-1 w-px self-stretch bg-filete" />
+        {(
+          [
+            ['todas', 'Todas'],
+            ['aprobadas', 'Aprobadas'],
+            ['revision', 'Por aprobar'],
+          ] as const
+        ).map(([valor, etiqueta]) => (
+          <Chip key={valor} elegido={estado === valor} onClick={() => setEstado(valor)}>
+            {etiqueta}
+          </Chip>
+        ))}
+      </div>
+
+      <div className="tarjeta-borde overflow-hidden rounded-[24px]">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-filete">
+              <th className="px-3 py-3 font-normal">Ponencia</th>
+              <th className="px-3 py-3 font-normal">Cuándo</th>
+              <th className="px-3 py-3 font-normal">Duración</th>
+              <th className="px-3 py-3 font-normal">Eje</th>
+              <th className="px-3 py-3 font-normal">Estado</th>
+              <th className="px-3 py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {visibles.map((ponencia) => (
+              <tr key={ponencia.id} className="border-b border-filete last:border-0">
+                <td className="max-w-md px-3 py-2.5">
+                  <span className="flex flex-col">
+                    <span className="truncate">{ponencia.titulo}</span>
+                    <span className="truncate text-texto-tenue">{ponencia.ponente}</span>
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap">
+                  <span className="capitalize">{DIA_CORTO.format(new Date(`${ponencia.fecha}T12:00:00`))}</span>
+                  {ponencia.horaInicio === null ? '' : ` · ${ponencia.horaInicio}`}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{duracion(ponencia.duracionEnSegundos)}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{ponencia.eje || '—'}</td>
+                <td className="px-3 py-2.5">
+                  <Estado {...APROBACION[ponencia.aprobacion]} />
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <button
+                    type="button"
+                    onClick={(evento) => {
+                      setOrigen(evento.currentTarget.getBoundingClientRect())
+                      ver(ponencia.id)
+                    }}
+                    className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-3 font-medium transition-colors hover:bg-[var(--mind-neutro)]"
+                  >
+                    <Icono nombre="arrow_outward" className="text-base" />
+                    Abrir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <PanelLateral abierto={abierta !== null} alCerrar={() => ver(null)} origen={origen} titulo={abierta?.titulo ?? 'Ponencia'}>
@@ -107,8 +162,9 @@ function DetalleDePonencia({ ponencia, datos }: { ponencia: Ponencia; datos: Dat
         </div>
         <div className="grid grid-cols-3 gap-4">
           <Dato rotulo="Ponente">{ponencia.ponente}</Dato>
-          <Dato rotulo="Sesión">
-            {ponencia.agrupacion} · {fecha(ponencia.fecha)}
+          <Dato rotulo="Cuándo">
+            {fecha(ponencia.fecha)}
+            {ponencia.horaInicio === null ? '' : ` · ${ponencia.horaInicio} – ${ponencia.horaFin ?? ''}`}
           </Dato>
           <Dato rotulo="Duración">{duracion(ponencia.duracionEnSegundos)}</Dato>
         </div>
@@ -249,15 +305,11 @@ function Aprobacion({ ponencia }: { ponencia: Ponencia }): ReactElement {
       </ol>
 
       {ponencia.comentarioDelPonente === '' ? null : (
-        <div className="flex flex-col gap-1 rounded-2xl bg-pildora-azul px-4 py-3 text-pildora-azul-texto">
+        <div className="flex flex-col gap-1 rounded-2xl bg-[var(--mind-tonal)] px-4 py-3 [color:var(--mind-tonal-texto)]">
           <span className="text-sm font-medium">Lo que pidió corregir</span>
           <span>{ponencia.comentarioDelPonente}</span>
         </div>
       )}
-
-      <p className="text-sm text-texto-tenue">
-        Hasta que el ponente la apruebe, esta ponencia no entra a la memoria general ni a la producción académica.
-      </p>
 
       {ponencia.aprobacion === 'enviada' ? (
         <BotonMind variante="tenue" icono="notifications" className="w-fit">

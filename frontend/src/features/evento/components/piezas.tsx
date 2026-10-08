@@ -1,7 +1,6 @@
 import type { ButtonHTMLAttributes, ReactElement, ReactNode } from 'react'
 import { forwardRef } from 'react'
-import { CLASES_DE_PILDORA } from '@/shared/ui'
-import type { ColorDePildora } from '@/shared/ui'
+import type { Tono } from '../formato'
 
 /*
   Las piezas del dialecto Melon Mind, medidas en la referencia
@@ -82,9 +81,16 @@ export function Cifra({ rotulo, valor, detalle }: { rotulo: string; valor: React
   )
 }
 
-export function Estado({ etiqueta, color }: { etiqueta: string; color: ColorDePildora }): ReactElement {
+const TONOS: Record<Tono, string> = {
+  listo: 'bg-[var(--mind-tonal)] [color:var(--mind-tonal-texto)]',
+  espera: 'tarjeta-borde text-texto',
+  alerta: 'bg-[var(--mind-alerta)] [color:var(--mind-alerta-texto)]',
+  neutro: 'bg-[var(--mind-neutro)] text-texto',
+}
+
+export function Estado({ etiqueta, tono }: { etiqueta: string; tono: Tono }): ReactElement {
   return (
-    <span className={`inline-flex h-7 shrink-0 items-center rounded-full px-3 text-[13px] whitespace-nowrap ${CLASES_DE_PILDORA[color]}`}>
+    <span className={`inline-flex h-7 shrink-0 items-center rounded-full px-3 text-[13px] font-medium whitespace-nowrap ${TONOS[tono]}`}>
       {etiqueta}
     </span>
   )

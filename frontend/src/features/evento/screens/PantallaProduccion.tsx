@@ -43,26 +43,11 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoDePagina titulo="Producción académica">
+      <EncabezadoDePagina titulo="Artículos">
         <BotonMind ref={botonNueva} icono="add" onClick={() => cambiar('nueva', '1')}>
-          Nueva producción
+          Nuevo artículo
         </BotonMind>
       </EncabezadoDePagina>
-
-      <div className="entrar-escalonado grid grid-cols-3 gap-2">
-        <Tarjeta variante="rellena" className="col-span-2 flex flex-col gap-3">
-          <span className="text-2xl font-semibold">Del evento al artículo</span>
-          <p className="max-w-2xl text-texto-tenue">
-            Cuentas una idea, el sistema busca en todas las ponencias aprobadas y propone enfoques con cuánto material los
-            respalda. Cada cita del texto final queda ligada a la frase exacta y al minuto en que se dijo.
-          </p>
-        </Tarjeta>
-        <Tarjeta className="flex flex-col justify-between gap-3">
-          <span className="text-sm text-texto-tenue">Material disponible</span>
-          <span className="text-[45px] leading-none font-semibold">{datos.ponencias.length} ponencias</span>
-          <span className="text-sm text-texto-tenue">transcritas, con minuto a minuto</span>
-        </Tarjeta>
-      </div>
 
       <div className="entrar-escalonado grid grid-cols-2 gap-2">
         {datos.producciones.map((produccion) => (
@@ -77,7 +62,7 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
           >
             <span className="flex items-center justify-between">
               <span className="text-sm text-texto-tenue">Artículo de reflexión</span>
-              <Estado etiqueta="Listo" color="verde" />
+              <Estado etiqueta="Listo" tono="listo" />
             </span>
             <span className="text-xl leading-snug font-medium">{produccion.titulo}</span>
             <span className="flex flex-wrap gap-4 text-sm text-texto-tenue">
@@ -105,7 +90,7 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
       <Modal
         abierto={creando}
         alCerrar={() => cambiar('nueva', null)}
-        titulo="Nueva producción"
+        titulo="Nuevo artículo"
         anclaEn={botonNueva}
         ancho="normal"
         cerrarAlPulsarElVelo={false}
@@ -176,12 +161,12 @@ function Recorrido({
     <div key={paso} className="entrar-escalonado flex flex-col gap-5 px-2 pb-2">
       {paso === 'idea' ? (
         <>
-          <PasoTitulo numero={1} titulo="Cuéntame la idea" texto="No hace falta que sea precisa: con lo que tengas en mente se buscan los enfoques posibles." />
+          <PasoTitulo numero={1} titulo="Tu idea" texto="Con lo que tengas en mente." />
           <textarea
             value={idea}
             onChange={(evento) => setIdea(evento.target.value)}
             rows={3}
-            className="w-full resize-none rounded-2xl bg-panel px-4 py-3 text-lg text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] outline-none focus:shadow-[0_0_0_3px_#e0e6f8,0_0_0_1px_var(--bitacora-filete-fuerte)]"
+            className="w-full resize-none rounded-2xl bg-panel px-4 py-3 text-lg text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] outline-none focus:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]"
           />
           <div className="flex justify-end">
             <BotonMind disabled={idea.trim() === ''} onClick={() => setPaso('buscando')}>
@@ -199,15 +184,12 @@ function Recorrido({
               ? `Buscando en ${datos.ponencias.length} ponencias…`
               : `Redactando con ${ejemplo.evidencias.length} evidencias…`}
           </span>
-          <span className="text-sm text-texto-tenue">
-            {paso === 'buscando' ? 'Solo las aprobadas y con consentimiento para producción académica.' : 'Cada cita se comprueba contra la transcripción.'}
-          </span>
         </div>
       ) : null}
 
       {paso === 'enfoques' ? (
         <>
-          <PasoTitulo numero={2} titulo="Enfoques posibles" texto="Cada uno con el material que lo respalda en este evento. Elige uno." />
+          <PasoTitulo numero={2} titulo="Enfoques" texto="Con el material que respalda cada uno." />
           <div className="flex flex-col gap-2">
             {ejemplo.enfoques.map((enfoque) => (
               <button
@@ -244,7 +226,7 @@ function Recorrido({
 
       {paso === 'esquema' ? (
         <>
-          <PasoTitulo numero={3} titulo="Esquema" texto="Las secciones del artículo y qué evidencias sostienen cada una." />
+          <PasoTitulo numero={3} titulo="Esquema" texto="Secciones y sus evidencias." />
           <ol className="flex flex-col gap-2">
             {ejemplo.esquema.map((seccion, indice) => (
               <li key={seccion.titulo} className="flex flex-col gap-2 rounded-[20px] bg-panel px-4 py-3">
@@ -295,9 +277,9 @@ function PasoTitulo({ numero, titulo, texto }: { numero: number; titulo: string;
 
 function Respaldo({ enfoque }: { enfoque: Enfoque }): ReactElement {
   const estilos = {
-    solido: { etiqueta: 'Material sólido · recomendado', color: 'verde' as const },
-    suficiente: { etiqueta: 'Material justo', color: 'ambar' as const },
-    insuficiente: { etiqueta: 'No alcanza con este evento', color: 'rosa' as const },
+    solido: { etiqueta: 'Material sólido · recomendado', tono: 'listo' as const },
+    suficiente: { etiqueta: 'Material justo', tono: 'espera' as const },
+    insuficiente: { etiqueta: 'No alcanza con este evento', tono: 'alerta' as const },
   }
   return <Estado {...estilos[enfoque.respaldo]} />
 }
@@ -317,8 +299,8 @@ function Articulo({ produccion, datos }: { produccion: Produccion; datos: DatosD
         <span className="text-sm text-texto-tenue">Artículo de reflexión · {datos.evento.nombre}</span>
         <span className="text-[28px] leading-tight font-semibold">{produccion.titulo}</span>
         <span className="flex flex-wrap gap-2">
-          <Estado etiqueta={`${new Set(produccion.evidencias.map((evidencia) => evidencia.ponente)).size} ponentes citados`} color="azul" />
-          <Estado etiqueta={`${produccion.evidencias.length} citas verificadas contra la transcripción`} color="verde" />
+          <Estado etiqueta={`${new Set(produccion.evidencias.map((evidencia) => evidencia.ponente)).size} ponentes citados`} tono="neutro" />
+          <Estado etiqueta={`${produccion.evidencias.length} citas verificadas contra la transcripción`} tono="listo" />
         </span>
       </Tarjeta>
 

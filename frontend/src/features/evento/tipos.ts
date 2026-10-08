@@ -60,7 +60,18 @@ export type Ponencia = {
   readonly aprobadaEl: string | null
   readonly comentarioDelPonente: string
   readonly idDueno: string
+  /** `HH:MM`, o null si la sesión todavía no tiene hora en la agenda. */
+  readonly horaInicio: string | null
+  readonly horaFin: string | null
+  readonly sala: string
+  readonly tipo: TipoDeSesion
+  /** Etiqueta temática opcional; vacía si el evento no usa ejes. */
+  readonly eje: string
+  /** Si ya hay grabación o transcripción: una sesión de la agenda puede no tenerla todavía. */
+  readonly tieneTranscripcion: boolean
 }
+
+export type TipoDeSesion = 'conferencia' | 'taller' | 'panel' | 'apertura' | 'cierre'
 
 export type Memoria = {
   readonly id: string

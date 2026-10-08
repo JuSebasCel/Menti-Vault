@@ -52,7 +52,7 @@ export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEv
     <div key={paso} className="entrar-escalonado flex flex-col items-center gap-6 px-6 pt-2 pb-4 text-center">
       {paso === 'quien' ? (
         <>
-          <Cabecera icono="person_add" titulo="Nuevo ponente" texto="Empezamos por quién es. El resto se completa en los pasos siguientes." />
+          <Cabecera icono="person_add" titulo="Nuevo ponente" texto="Empezamos por quién es." />
           <div className="flex w-full max-w-sm flex-col gap-2 text-left">
             {pendientes.map((ponente) => (
               <OpcionDePonente
@@ -83,7 +83,7 @@ export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEv
 
       {paso === 'correo' ? (
         <>
-          <Cabecera icono="mail" titulo="Contacto" texto={`A este correo le llega a ${nombre.split(' ')[0] ?? ''} la invitación para autorizar y revisar su ponencia.`} />
+          <Cabecera icono="mail" titulo="Contacto" texto="A dónde le llega la invitación." />
           <div className="w-full max-w-sm text-left">
             <Campo valor={correo} alCambiar={setCorreo} rotulo="Correo electrónico" ejemplo="Ej. ana@universidad.edu.co" tipo="email" />
           </div>
@@ -100,7 +100,7 @@ export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEv
 
       {paso === 'usos' ? (
         <>
-          <Cabecera icono="verified_user" titulo="Qué se le pide" texto="Cada uso se autoriza por separado. Quita los que este evento no necesite." />
+          <Cabecera icono="verified_user" titulo="Qué se le pide" texto="Cada uso se autoriza por separado." />
           <div className="flex w-full max-w-md flex-col gap-2 text-left">
             {USOS_DEL_CONSENTIMIENTO.map((uso) => {
               const marcado = usos.includes(uso.clave)
@@ -134,7 +134,7 @@ export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEv
           <div className="w-full text-left">
             <CorreoDeInvitacion nombre={nombre} correo={correo.trim()} evento={datos.evento.nombre} />
           </div>
-          {error === null ? null : <p className="w-full rounded-2xl bg-pildora-rosa px-4 py-3 text-sm text-pildora-rosa-texto">{error}</p>}
+          {error === null ? null : <p className="w-full rounded-2xl bg-[var(--mind-alerta)] px-4 py-3 text-sm [color:var(--mind-alerta-texto)]">{error}</p>}
           <Botonera>
             <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('usos')}>
               Ir atrás
@@ -152,9 +152,6 @@ export function AsistenteDeInvitacion({ datos, alTerminar }: { datos: DatosDelEv
             <Icono nombre="check" className="text-3xl" />
           </span>
           <span className="text-[36px] leading-none font-semibold">Invitación enviada</span>
-          <p className="max-w-sm text-texto-tenue">
-            Cuando {nombre.split(' ')[0] ?? ''} responda, su estado cambia solo en el tablero y su ponencia queda lista para la memoria.
-          </p>
           <BotonMind variante="tenue" onClick={alTerminar} className="w-full max-w-sm justify-center">
             Salir
           </BotonMind>
@@ -199,7 +196,7 @@ function Campo({
         value={valor}
         placeholder={ejemplo}
         onChange={(evento) => alCambiar(evento.target.value)}
-        className="h-12 rounded-2xl bg-panel px-4 text-base text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] transition-shadow duration-500 outline-none focus:shadow-[0_0_0_3px_#e0e6f8,0_0_0_1px_var(--bitacora-filete-fuerte)]"
+        className="h-12 rounded-2xl bg-panel px-4 text-base text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] transition-shadow duration-500 outline-none focus:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]"
       />
     </label>
   )

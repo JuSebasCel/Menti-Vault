@@ -38,10 +38,10 @@ function Publicaciones({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   return (
     <div className="flex flex-col gap-4">
-      <EncabezadoDePagina titulo="Publicaciones" />
+      <EncabezadoDePagina titulo="Redes" />
 
       {sinPermiso.length === 0 ? null : (
-        <div className="flex items-center gap-3 rounded-[20px] bg-pildora-ambar px-5 py-3 text-pildora-ambar-texto">
+        <div className="flex items-center gap-3 rounded-[20px] tarjeta-borde px-5 py-3 text-texto">
           <Icono nombre="shield_person" className="text-xl" />
           <span className="text-sm">
             Sin piezas de {sinPermiso.map((ponente) => ponente.nombre).join(' ni de ')}:{' '}

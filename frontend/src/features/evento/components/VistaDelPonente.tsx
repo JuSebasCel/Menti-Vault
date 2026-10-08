@@ -128,7 +128,7 @@ function PaginaDelPonente({ ponente, datos }: { ponente: Ponente; datos: DatosDe
             </BotonMind>
           </div>
         ) : (
-          <p className="rounded-2xl bg-pildora-azul px-4 py-3 text-sm text-pildora-azul-texto">
+          <p className="rounded-2xl bg-[var(--mind-tonal)] px-4 py-3 text-sm [color:var(--mind-tonal-texto)]">
             {respuesta === 'aprobar'
               ? 'Así lo aprobaría el ponente. Es una vista previa: no se guardó nada.'
               : 'Aquí el ponente escribe qué corregir. Es una vista previa: no se guardó nada.'}
