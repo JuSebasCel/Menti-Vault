@@ -140,7 +140,6 @@ describe('mapearConferencia', () => {
       /* La fila no trae la columna: se cargó sin elegir tope, y cae a null. */
       maximoDeFichas: null,
       tiemposEstimados: false,
-      referencias: [],
       idDueno: 'usuario-1',
       estado: 'procesada',
       idTemaPrincipal: 'tema-1',

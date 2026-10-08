@@ -69,8 +69,6 @@ class RepositorioDeConferencias(Protocol):
 
     def listar_material_de_apoyo(self, conferencia: Conferencia) -> tuple[tuple[str, bytes], ...]: ...
 
-    def guardar_referencias(self, id_conferencia: str, referencias: Sequence[dict[str, str]]) -> None: ...
-
     def guardar_transcripcion(self, conferencia: Conferencia, segmentos: Sequence[Segmento]) -> None: ...
 
 
@@ -326,15 +324,6 @@ class RepositorioSupabase:
             raise ErrorDeBitacora("PROC_ARCHIVO_ILEGIBLE", "archivo vacío")
 
         return nombre, bytes(contenido)
-
-    def guardar_referencias(self, id_conferencia: str, referencias: Sequence[dict[str, str]]) -> None:
-        """Reemplaza la lista entera: buscarlas otra vez es rehacer la búsqueda, no añadir a la anterior."""
-        try:
-            self._cliente.table("conferencias").update({"referencias": list(referencias)}).eq(
-                "id", id_conferencia
-            ).execute()
-        except Exception as fallo:  # noqa: BLE001
-            raise traducir_fallo_de_datos(fallo) from fallo
 
     def listar_material_de_apoyo(self, conferencia: Conferencia) -> tuple[tuple[str, bytes], ...]:
         """

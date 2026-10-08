@@ -27,7 +27,6 @@ export type TipoDeCampo =
   | 'cifras'
   | 'cita'
   | 'conclusiones'
-  | 'fuentes'
   | 'dato'
   | 'lista'
   | 'propio'
@@ -90,18 +89,6 @@ export const TIPOS_DE_CAMPO: readonly {
     icono: 'flag',
     ajustes: {
       instruccion: 'Resume las conclusiones y las recomendaciones con que cerró.',
-      modo: 'redactar',
-      extension: 'media',
-      formato: 'lista_vinetas',
-    },
-  },
-  {
-    valor: 'fuentes',
-    etiqueta: 'Fuentes que citó',
-    icono: 'menu_book',
-    ajustes: {
-      instruccion:
-        'Lista las fuentes que la charla citó (autor, año y título), tal como se dijeron o aparecieron en las diapositivas. No añadas ninguna que no conste.',
       modo: 'redactar',
       extension: 'media',
       formato: 'lista_vinetas',

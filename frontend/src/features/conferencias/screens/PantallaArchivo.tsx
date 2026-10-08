@@ -31,7 +31,6 @@ import type {
   Etiqueta,
   EstadoDeProcesamiento,
   Ficha,
-  ReferenciaDeConferencia,
 } from '../data'
 import { densidadDe } from '../carga'
 import { estadoParaMostrar, useTareasEnSegundoPlano } from '../carga/segundoPlano'
@@ -832,8 +831,6 @@ export type PropsPantallaArchivo = {
   alEliminarEtiqueta?: (idEtiqueta: string) => void
   /** Vuelve a pedirle al backend que analice esa conferencia. */
   alAnalizar?: (idConferencia: string) => void
-  /** Busca las fuentes que cita la charla. Devuelve el mensaje de error, o `null` si fue bien. */
-  alBuscarReferencias?: (idConferencia: string) => Promise<string | null>
   alRenombrarConferencia?: (
     idConferencia: string,
     cambio: { titulo: string; ponente: string; fechaDelEvento: string; descripcion: string },
@@ -867,7 +864,6 @@ export function PantallaArchivo({
   alAlternarAsignacion,
   alEliminarEtiqueta,
   alAnalizar,
-  alBuscarReferencias,
   alRenombrarConferencia,
   alEliminarConferencia,
   alEditarFicha,
@@ -903,9 +899,6 @@ export function PantallaArchivo({
   }, [idFicha])
   const [vista, setVista] = useState<Vista>('columnas')
   const tareas = useTareasEnSegundoPlano()
-  /* La búsqueda de fuentes citadas del detalle: en curso, y el fallo de la última. */
-  const [buscandoReferencias, setBuscandoReferencias] = useState(false)
-  const [errorDeReferencias, setErrorDeReferencias] = useState<string | null>(null)
   /* Los ponentes ya creados, para cambiar el de una conferencia eligiéndolo en vez de reescribir su nombre. */
   const {
     eventos: eventosDelDirectorio,
@@ -1927,28 +1920,6 @@ export function PantallaArchivo({
               Guardar
             </button>
 
-            {/*
-              Las fuentes que la charla cita, con su evidencia. Viven en el
-              detalle de la conferencia y no en cada ficha porque son de la
-              charla entera: la misma fuente se nombra en varios momentos, y
-              quien arma una bibliografía las quiere juntas.
-            */}
-            {alBuscarReferencias === undefined ? null : (
-              <FuentesCitadas
-                referencias={conferenciaEnDetalle.conferencia.referencias ?? []}
-                buscando={buscandoReferencias}
-                error={errorDeReferencias}
-                alBuscar={() => {
-                  setBuscandoReferencias(true)
-                  setErrorDeReferencias(null)
-                  void alBuscarReferencias(conferenciaEnDetalle.conferencia.id).then((fallo) => {
-                    setBuscandoReferencias(false)
-                    setErrorDeReferencias(fallo)
-                  })
-                }}
-              />
-            )}
-
             <div className="mt-2 flex flex-col border-t border-filete pt-2">
               {alAnalizar !== undefined &&
               sePuedeAnalizar(
@@ -2251,94 +2222,6 @@ export function PantallaArchivo({
           </div>
         )}
       </Modal>
-    </div>
-  )
-}
-
-/*
-  Las fuentes que cita una charla, tal como se copiarían a una bibliografía.
-
-  Cada una dice de dónde salió —la dijo el ponente, estaba en una diapositiva,
-  o la propuso la IA— y guarda la evidencia: el trozo donde aparece. Sin eso
-  una bibliografía generada no se puede comprobar, y comprobarla es justo lo
-  que hace que se pueda usar.
-*/
-const ORIGEN_DE_LA_FUENTE: Record<ReferenciaDeConferencia['origen'], { etiqueta: string; color: ColorDePildora }> = {
-  dicha: { etiqueta: 'La dijo', color: 'verde' },
-  diapositiva: { etiqueta: 'En diapositiva', color: 'azul' },
-  inferida: { etiqueta: 'Inferida', color: 'ambar' },
-}
-
-/* Una fila escrita a mano en la base podría traer otro origen: cae en `dicha`. */
-function comoSeEncontro(origen: ReferenciaDeConferencia['origen']) {
-  return ORIGEN_DE_LA_FUENTE[origen] ?? ORIGEN_DE_LA_FUENTE.dicha
-}
-
-function FuentesCitadas({
-  referencias,
-  buscando,
-  error,
-  alBuscar,
-}: {
-  referencias: readonly ReferenciaDeConferencia[]
-  buscando: boolean
-  error: string | null
-  alBuscar: () => void
-}): ReactElement {
-  return (
-    <div className="mt-2 flex flex-col gap-3 border-t border-filete pt-4">
-      <div className="flex items-center justify-between gap-3 px-2">
-        <p className="text-sm font-medium text-texto-tenue">Fuentes que cita</p>
-        <button
-          type="button"
-          disabled={buscando}
-          onClick={alBuscar}
-          className="h-8 cursor-pointer rounded-full bg-acento-tenue px-3 text-xs text-texto transition-colors hover:bg-ilustracion disabled:cursor-default disabled:opacity-60"
-        >
-          {buscando ? 'Buscando…' : referencias.length === 0 ? 'Buscar' : 'Buscar otra vez'}
-        </button>
-      </div>
-
-      {error === null ? null : (
-        <p role="alert" className="px-2 text-sm text-error">
-          {error}
-        </p>
-      )}
-
-      {referencias.length === 0 ? (
-        <p className="px-2 text-sm leading-relaxed text-texto-tenue">
-          {buscando
-            ? 'Leyendo la transcripción y las diapositivas…'
-            : 'Se buscan en lo que se dijo y en el material de apoyo, con el trozo donde aparece cada una.'}
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {referencias.map((referencia) => (
-            <li key={referencia.cita} className="flex flex-col gap-1.5 rounded-[20px] bg-fondo px-4 py-3">
-              <p className="text-sm leading-relaxed text-texto">{referencia.cita}</p>
-
-              <div className="flex items-center gap-2">
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${CLASES_DE_PILDORA[comoSeEncontro(referencia.origen).color]}`}
-                >
-                  {comoSeEncontro(referencia.origen).etiqueta}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => void navigator.clipboard?.writeText(referencia.cita)}
-                  className="cursor-pointer rounded-full px-2 py-0.5 text-xs text-texto-tenue transition-colors hover:bg-acento-tenue hover:text-texto"
-                >
-                  Copiar
-                </button>
-              </div>
-
-              {/* La evidencia, para comprobarla sin volver a la grabación. */}
-              <p className="text-xs leading-relaxed text-texto-tenue">«{referencia.evidencia}»</p>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }

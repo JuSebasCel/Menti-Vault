@@ -44,7 +44,6 @@ from bitacora.compartido.ia import (
 from bitacora.conferencias.repositorio import RepositorioSupabase
 from bitacora.conferencias.tipos import Segmento
 from bitacora.analisis.condensacion import Condensador, condensador_de
-from bitacora.analisis.referencias import BuscadorDeReferencias, buscador_de_referencias
 from bitacora.memorias.rastreo import Rastreador, rastreador_de
 from bitacora.memorias.vision import LectorDeImagenes, lector_de_imagenes
 from bitacora.memorias.redaccion import Redactor, redactor_de
@@ -175,11 +174,6 @@ def agente_para(
 def redactor_para(contexto: ContextoDeUsuario, cliente: ClienteDeOpenAI) -> Redactor:
     """El modelo de análisis: escribir una memoria es leer discurso, no conversar."""
     return redactor_de(cliente, contexto.configuracion.modelo_de_analisis)
-
-
-def buscador_de_referencias_para(contexto: ContextoDeUsuario, cliente: ClienteDeOpenAI) -> BuscadorDeReferencias:
-    """Reconocer una fuente citada es leer discurso: el mismo modelo del análisis."""
-    return buscador_de_referencias(cliente, contexto.configuracion.modelo_de_analisis)
 
 
 def lector_de_imagenes_para(contexto: ContextoDeUsuario, clave: ClaveDeOpenAI) -> LectorDeImagenes:

@@ -55,8 +55,6 @@ CodigoError = Literal[
     # Material de apoyo: diapositivas y documentos de una charla.
     "MATERIAL_NO_ENCONTRADO",
     "MATERIAL_SIN_TEXTO",
-    # Referencias: las fuentes que cita una charla.
-    "REF_SIN_MATERIAL",
     # Agente conversacional sobre el catálogo.
     "CHAT_MENSAJE_VACIO",
     "CHAT_CONVERSACION_NO_ENCONTRADA",
@@ -68,10 +66,6 @@ CodigoError = Literal[
 ]
 
 _MENSAJES: Final[dict[str, str]] = {
-    "REF_SIN_MATERIAL": (
-        "Esta conferencia no tiene transcripcion ni material de apoyo donde buscar fuentes. "
-        "Analizala primero, o adjunta sus diapositivas."
-    ),
     "MATERIAL_NO_ENCONTRADO": "No se encontro esa imagen entre el material de apoyo de la conferencia.",
     "MATERIAL_SIN_TEXTO": (
         "No se pudo leer texto en esa imagen. Puede que no tenga texto legible, que pese demasiado "
@@ -206,7 +200,6 @@ _ESTADOS_HTTP: Final[dict[str, int]] = {
     "PLANT_SIN_CAMPOS": 422,
     "MATERIAL_NO_ENCONTRADO": 404,
     "MATERIAL_SIN_TEXTO": 422,
-    "REF_SIN_MATERIAL": 422,
     "MEM_DOCX_VACIO": 422,
     "MEM_DOCX_DEMASIADO_GRANDE": 413,
     "MEM_PDF_SIN_CONVERSOR": 503,

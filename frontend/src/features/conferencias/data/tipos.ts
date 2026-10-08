@@ -119,26 +119,6 @@ export type Comparticion = {
   readonly privacidad: PrivacidadDeComparticion
 }
 
-/**
- * Una fuente que la charla cita: un artículo, un libro, un informe.
- *
- * No es una ficha. Una ficha es una idea DE la charla; esto es algo que la
- * charla cita A SU VEZ, y que hace falta para la bibliografía de quien
- * escriba sobre ella.
- */
-export type ReferenciaDeConferencia = {
-  /** Ya escrita en APA 7 con lo que se sepa; lo que falte se omite, no se inventa. */
-  readonly cita: string
-  readonly autores?: string
-  readonly anio?: string
-  readonly titulo?: string
-  readonly fuente?: string
-  /** `dicha` la nombró el ponente, `diapositiva` estaba escrita, `inferida` la propuso la IA. */
-  readonly origen: 'dicha' | 'diapositiva' | 'inferida'
-  /** El trozo donde aparece: es lo que permite comprobarla sin volver a la grabación. */
-  readonly evidencia: string
-}
-
 export type Conferencia = {
   readonly id: string
   readonly titulo: string
@@ -164,8 +144,6 @@ export type Conferencia = {
    * minuto que parece medido y no lo es resulta peor que no dar ninguno.
    */
   readonly tiemposEstimados?: boolean
-  /** Las fuentes que citó, buscadas a petición (ver `buscarReferencias`). */
-  readonly referencias?: readonly ReferenciaDeConferencia[]
   /** Cuenta que cargó la conferencia y decide con quién se comparte. */
   readonly idDueno: string
   readonly estado: EstadoDeProcesamiento

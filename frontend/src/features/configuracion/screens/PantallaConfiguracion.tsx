@@ -317,7 +317,7 @@ function SeccionDeApariencia(): ReactElement {
 }
 
 function SeccionDePreferencias(): ReactElement {
-  const { analizarAlCargar, avisarAlTerminar, citasInferidas } = usePreferencias()
+  const { analizarAlCargar, avisarAlTerminar } = usePreferencias()
 
   return (
     <section aria-label="Preferencias" className="flex flex-col gap-5 rounded-[24px] bg-panel p-6">
@@ -341,22 +341,6 @@ function SeccionDePreferencias(): ReactElement {
         ]}
         valor={avisarAlTerminar ? 'avisar' : 'callar'}
         alCambiar={(valor) => void cambiarPreferencia('avisarAlTerminar', valor === 'avisar')}
-      />
-
-      {/*
-        Las fuentes que cita una charla se recogen con su evidencia. Inferir
-        va aparte y apagado: un modelo al que se le pide bibliografía completa
-        de memoria el año, el título y hasta el DOI, y una referencia
-        inventada en un documento académico es el error más caro de esta app.
-      */}
-      <EleccionEnPastillas
-        etiqueta="Fuentes que cita una charla"
-        opciones={[
-          { valor: 'constan', etiqueta: 'Solo las que constan', icono: 'fact_check' },
-          { valor: 'inferir', etiqueta: 'Dejar que la IA infiera', icono: 'lightbulb' },
-        ]}
-        valor={citasInferidas ? 'inferir' : 'constan'}
-        alCambiar={(valor) => void cambiarPreferencia('citasInferidas', valor === 'inferir')}
       />
 
       <button
