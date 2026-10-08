@@ -1,4 +1,6 @@
 import { supabase } from '@/shared/supabase/cliente'
+import { analizarEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
+import { subirArchivoDeConferencia } from '@/features/conferencias/repositorio/repositorio'
 import { codigoDeErrorDeSupabase } from '@/shared/supabase/consultas'
 import type { ResultadoDeConsulta } from '@/shared/supabase/consultas'
 import type {
@@ -448,17 +450,49 @@ export async function crearSesion(
   idDueno: string,
   evento: string,
   cambios: CambiosDeSesion,
+): Promise<ResultadoDeConsulta<string>> {
+  const { data, error } = await supabase
+    .from('conferencias')
+    .insert({
+      ...filaDeSesion(cambios),
+      evento,
+      codigo_de_evento: evento.toUpperCase().replace(/[^A-Z0-9]+/g, '-'),
+      id_dueno: idDueno,
+      estado: 'en-cola',
+      fuente: 'audio',
+      duracion_en_segundos: 0,
+    })
+    .select('id')
+    .single()
+  return error === null ? { ok: true, datos: texto((data as Fila)['id']) } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/*
+  La grabación de una sesión: se sube a su carpeta, la sesión anota de qué
+  tipo es y cuánto dura, y se pide la transcripción en segundo plano. La
+  sesión ya existía en la agenda, así que si la subida falla no se borra
+  nada: queda como estaba, sin grabación.
+*/
+export async function subirGrabacion(
+  idDueno: string,
+  idConferencia: string,
+  archivo: File,
+  fuente: 'audio' | 'transcripcion',
+  duracionEnSegundos: number,
 ): Promise<ResultadoDeConsulta<null>> {
-  const { error } = await supabase.from('conferencias').insert({
-    ...filaDeSesion(cambios),
-    evento,
-    codigo_de_evento: evento.toUpperCase().replace(/[^A-Z0-9]+/g, '-'),
-    id_dueno: idDueno,
-    estado: 'en-cola',
-    fuente: 'audio',
-    duracion_en_segundos: 0,
-  })
-  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+  const subida = await subirArchivoDeConferencia(idDueno, idConferencia, archivo)
+  if (!subida.ok) {
+    return subida
+  }
+  const { error } = await supabase
+    .from('conferencias')
+    .update({ fuente, duracion_en_segundos: Math.round(duracionEnSegundos), estado: 'en-cola', cargada_el: new Date().toISOString() })
+    .eq('id', idConferencia)
+  if (error !== null) {
+    return { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+  }
+  void analizarEnSegundoPlano(idConferencia)
+  return { ok: true, datos: null }
 }
 
 export type Foto = { readonly ruta: string; readonly nombre: string }

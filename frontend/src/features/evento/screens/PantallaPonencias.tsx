@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { ModalDeCarga } from '@/features/conferencias/components'
 import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDeAudio'
 import { GaleriaDeFotos } from '../components/GaleriaDeFotos'
 import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
+import { AsistenteDeGrabacion } from '../components/AsistenteDeGrabacion'
+import { anclaDelDock } from '../anclaDelDock'
+import { Modal } from '@/shared/ui'
 import { carpetaDeFotosDeSesion, leerTranscripcion } from '../repositorio'
-import { useEvento } from '../useEvento'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
@@ -38,7 +39,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
   const subiendo = parametros.get('subir') === '1'
   const botonSubir = useRef<HTMLButtonElement>(null)
-  const { invalidar } = useEvento()
+  const desdeDock = parametros.get('desde') === 'dock'
 
   const dias = useMemo(() => [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort(), [datos.ponencias])
   const visibles = datos.ponencias.filter(
@@ -53,6 +54,10 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
     const siguientes = new URLSearchParams(parametros)
     if (valor === null) {
       siguientes.delete(clave)
+      siguientes.delete('desde')
+      if (clave === 'subir') {
+        siguientes.delete('sesion')
+      }
     } else {
       siguientes.set(clave, valor)
     }
@@ -102,7 +107,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
           ]}
         />
         <BotonMind ref={botonSubir} icono="upload" onClick={() => cambiar('subir', '1')}>
-          Subir ponencia
+          Subir grabación
         </BotonMind>
       </EncabezadoDePagina>
 
@@ -157,7 +162,22 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 <td className="px-3 py-2.5">
                   <Estado {...MOMENTO[momentoDe(ponencia)]} />
                 </td>
-                <td className="px-3 py-2.5 text-right">
+                <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                  {ponencia.tieneTranscripcion ? null : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const siguientes = new URLSearchParams(parametros)
+                        siguientes.set('subir', '1')
+                        siguientes.set('sesion', ponencia.id)
+                        setParametros(siguientes, { replace: true })
+                      }}
+                      className="mr-1 inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-acento px-3 font-medium text-acento-contraste transition-opacity hover:opacity-85"
+                    >
+                      <Icono nombre="upload" className="text-base" />
+                      Subir grabación
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(evento) => {
@@ -180,16 +200,23 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
         {abierta === null ? null : <DetalleDePonencia key={abierta.id} ponencia={abierta} datos={datos} inicial={(parametros.get('pestana') as Pestana | null) ?? 'transcripcion'} />}
       </PanelLateral>
 
-      {/* El flujo de carga que ya existe: audio o transcripción, con su análisis en segundo plano. */}
-      <ModalDeCarga
+      <Modal
         abierto={subiendo}
         alCerrar={() => cambiar('subir', null)}
-        anclaEn={botonSubir}
-        alCargar={() => {
-          cambiar('subir', null)
-          invalidar()
-        }}
-      />
+        titulo="Subir grabación"
+        anclaje="disparador"
+        anclaEn={desdeDock ? anclaDelDock : botonSubir}
+        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})}
+        ancho="normal"
+        cerrarAlPulsarElVelo={false}
+      >
+        <AsistenteDeGrabacion
+          key={parametros.get('subir') ?? ''}
+          datos={datos}
+          idInicial={parametros.get('sesion')}
+          alTerminar={() => cambiar('subir', null)}
+        />
+      </Modal>
     </div>
   )
 }

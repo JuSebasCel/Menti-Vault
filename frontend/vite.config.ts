@@ -38,6 +38,14 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     ...(process.env.VITEST ? [] : [nodePolyfills({ globals: { Buffer: true, process: true, global: true } })]),
   ],
+  /*
+    ffmpeg.wasm arranca su propio worker con `new URL(..., import.meta.url)`;
+    si Vite lo preempaqueta, esa URL deja de apuntar al archivo real y el
+    worker no carga. Por eso se sirve tal cual.
+  */
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
