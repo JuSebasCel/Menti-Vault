@@ -3,6 +3,14 @@ import { Navigate, Route, Routes } from 'react-router'
 import { PantallaAcceso, PantallaRegistro } from '@/features/auth/screens'
 import { SessionProvider } from '@/features/auth/session'
 import { ShellLayout } from '@/app/layout'
+import { ShellDelEvento } from '@/app/layout/ShellDelEvento'
+import { PantallaInicio } from '@/features/evento/screens/PantallaInicio'
+import { PantallaPonentes } from '@/features/evento/screens/PantallaPonentes'
+import { PantallaPonencias } from '@/features/evento/screens/PantallaPonencias'
+import { PantallaMemoriasDelEvento } from '@/features/evento/screens/PantallaMemoriasDelEvento'
+import { PantallaProduccion } from '@/features/evento/screens/PantallaProduccion'
+import { PantallaPublicaciones } from '@/features/evento/screens/PantallaPublicaciones'
+import { PantallaOrganizacion } from '@/features/evento/screens/PantallaOrganizacion'
 import { RutaProtegida } from '@/app/RutaProtegida'
 import { CompuertaDelSitio } from '@/app/CompuertaDelSitio'
 import { RutaPublica } from '@/app/RutaPublica'
@@ -44,8 +52,23 @@ export function App(): ReactElement {
 
             <Route element={<RutaProtegida />}>
               <Route element={<CompuertaDelSitio />}>
+              {/*
+                El producto reorientado: el ciclo editorial del evento. Las
+                pantallas de abajo, en el armazón anterior, siguen vivas para lo
+                que todavía no se ha mudado (subir una ponencia, plantillas,
+                configuración).
+              */}
+              <Route element={<ShellDelEvento />}>
+                <Route index element={<Navigate to="/inicio" replace />} />
+                <Route path="/inicio" element={<PantallaInicio />} />
+                <Route path="/ponentes" element={<PantallaPonentes />} />
+                <Route path="/ponencias" element={<PantallaPonencias />} />
+                <Route path="/memorias-del-evento" element={<PantallaMemoriasDelEvento />} />
+                <Route path="/produccion" element={<PantallaProduccion />} />
+                <Route path="/publicaciones" element={<PantallaPublicaciones />} />
+                <Route path="/organizacion" element={<PantallaOrganizacion />} />
+              </Route>
               <Route element={<ShellLayout />}>
-                <Route index element={<Navigate to="/conferencias" replace />} />
                 <Route path="/conferencias" element={<PantallaConferencias />} />
                 <Route
                   path="/conferencias/:idConferencia"
@@ -79,7 +102,7 @@ export function App(): ReactElement {
             {/* Vista previa del archivo con los fixtures, para juzgarlo con contenido. */}
             <Route path="/_archivo" element={<PantallaArchivoDePrueba />} />
 
-            <Route path="*" element={<Navigate to="/conferencias" replace />} />
+            <Route path="*" element={<Navigate to="/inicio" replace />} />
           </Routes>
         </SessionProvider>
       </SoloEscritorio>

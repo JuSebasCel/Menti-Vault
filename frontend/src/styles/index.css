@@ -1,6 +1,7 @@
 @import '@fontsource-variable/dm-sans';
 @import '@fontsource-variable/bricolage-grotesque';
 @import '@fontsource-variable/geist-mono';
+@import '@fontsource-variable/inter';
 @import 'material-symbols/rounded.css';
 @import 'tailwindcss';
 
@@ -59,8 +60,14 @@
     el borde se vea sin tener que buscarlo. El fondo además baja un punto:
     a pantalla completa, cuanto más cerca del blanco, más deslumbra.
   */
-  --bitacora-fondo: oklch(0.966 0.008 85);
-  --bitacora-panel: oklch(0.922 0.012 85);
+  /*
+    Tercera pasada (2026-10-08): el claro pasa a los valores medidos en Melon
+    Mind (`planes/referencia-melonmind-mind.md`). El beige daba calidez pero
+    competía con el negro del acento; sobre un casi blanco frío el negro es lo
+    único que se lee como interactivo, que es la idea del lenguaje.
+  */
+  --bitacora-fondo: #fbf9fc;
+  --bitacora-panel: #f5f3f6;
   /*
     Los filetes van casi sin croma, y no por gusto: el mismo matiz cálido que
     en una superficie a L 0.96 solo dice "esto no es blanco", a L 0.70 se lee
@@ -71,23 +78,23 @@
     La regla: el beige vive en las superficies, donde es claro y ancho; los
     bordes lo acompañan en matiz pero casi sin saturación.
   */
-  --bitacora-filete: oklch(0.86 0.005 85);
-  --bitacora-filete-fuerte: oklch(0.7 0.006 85);
+  --bitacora-filete: #e9e7ea;
+  --bitacora-filete-fuerte: #c5c6ce;
 
   /*
     Texto. El secundario sube de contraste: a 0,43 sobre el fondo se quedaba
     justo en el límite de AA para texto pequeño, y este es el tono en el que
     están los renglones que más se leen —el ponente, el minuto, los rótulos—.
   */
-  --bitacora-texto: oklch(0.18 0.006 85);
-  --bitacora-texto-tenue: oklch(0.38 0.01 85);
+  --bitacora-texto: #1b1b1e;
+  --bitacora-texto-tenue: #75777e;
 
   /* Acento: contraste, no color */
   --bitacora-acento: #000000;
   --bitacora-acento-fuerte: #000000;
   /* Las pastillas y los campos: se tienen que ver sobre el panel, no solo sobre el fondo. */
-  --bitacora-acento-tenue: oklch(0.885 0.011 85);
-  --bitacora-acento-contraste: oklch(0.985 0.005 85);
+  --bitacora-acento-tenue: #efedf0;
+  --bitacora-acento-contraste: #ffffff;
 
   /*
     Navegación. En claro, el inactivo del dock es un gris cálido, del mismo
@@ -98,7 +105,7 @@
     nota fría repetida seis veces en la columna que más se ve. El azul se
     queda en el tema oscuro, donde se pidió y donde casa con el fondo.
   */
-  --bitacora-nav-tenue: oklch(0.55 0.012 70);
+  --bitacora-nav-tenue: #75777e;
   --bitacora-nav-activo: #000000;
 
   /*
@@ -1154,4 +1161,113 @@
 
 :root[data-dock='compacto'] .dock-de-menti .item-de-dock[aria-current='page'] {
   font-size: 1.3125rem;
+}
+
+/*
+  Dialecto Melon Mind (planes/referencia-melonmind-mind.md), medido allí.
+
+  Ítem del dock con icono. El activo es una píldora negra "de vidrio": dos
+  brillos internos y una sombra difusa que la despegan del fondo sin borde.
+  No se desliza de un ítem a otro —en la referencia aparece en el nuevo— y lo
+  que se anima es el relleno, que empuja el contenido hacia dentro.
+*/
+.item-mind {
+  display: flex;
+  height: 40px;
+  width: 100%;
+  cursor: pointer;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 0 12px;
+  font-family: 'Inter Variable', 'DM Sans Variable', ui-sans-serif, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--bitacora-nav-tenue);
+  transition:
+    padding 0.3s cubic-bezier(0, 1, 0, 1),
+    background-color 0.1s ease,
+    color 0.2s cubic-bezier(0, 1, 0, 1);
+}
+
+.item-mind:hover {
+  background-color: #e1e2eb;
+  color: var(--bitacora-texto);
+}
+
+.item-mind[data-activo='true'] {
+  padding-left: 24px;
+  background-color: #000;
+  color: #fff;
+  box-shadow:
+    0 0 32px -10px #000,
+    inset 0 0 0 1px rgb(255 255 255 / 0.64),
+    inset 0 4px 24px rgb(255 255 255 / 0.24);
+}
+
+.item-mind .icono-relleno {
+  font-size: 20px;
+}
+
+/*
+  Chip de filtro. La firma de movimiento de la referencia: al elegirlo pasa
+  de esquinas de 12 a píldora y se ensancha con una curva que se pasa de largo
+  (y = 2) y vuelve; el que se apaga hace lo mismo al revés, a la vez.
+*/
+.chip-mind {
+  height: 33px;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 14px;
+  background-color: var(--bitacora-acento-tenue);
+  color: var(--bitacora-texto);
+  transition:
+    padding 0.4s cubic-bezier(0.38, 0.49, 0, 2),
+    border-radius 0.2s cubic-bezier(0.38, 0.49, 0, 1.5),
+    background-color 0.125s,
+    color 0.125s;
+}
+
+.chip-mind[data-elegido='true'] {
+  border-radius: 64px;
+  padding: 0 18px;
+  background-color: var(--bitacora-acento);
+  color: var(--bitacora-acento-contraste);
+}
+
+/* Tarjeta con borde de la referencia: un filete interior, no un `border` que sume al tamaño. */
+.tarjeta-borde {
+  box-shadow: inset 0 0 0 1px var(--bitacora-filete);
+}
+
+/* El contenido de un panel entra escalonado: cada bloque con su propio desenfoque. */
+@keyframes entrar-enfocando {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+.entrar-escalonado > * {
+  animation: entrar-enfocando 0.45s cubic-bezier(0.37, 0.35, 0, 1) both;
+}
+
+.entrar-escalonado > *:nth-child(2) { animation-delay: 40ms; }
+.entrar-escalonado > *:nth-child(3) { animation-delay: 80ms; }
+.entrar-escalonado > *:nth-child(4) { animation-delay: 120ms; }
+.entrar-escalonado > *:nth-child(5) { animation-delay: 160ms; }
+.entrar-escalonado > *:nth-child(n + 6) { animation-delay: 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entrar-escalonado > * {
+    animation: none;
+  }
 }
