@@ -291,11 +291,16 @@ function apellidos(nombre: string): string {
 
 function Articulo({ produccion, datos }: { produccion: Produccion; datos: DatosDelEvento }): ReactElement {
   const porClave = new Map(produccion.evidencias.map((evidencia) => [evidencia.clave, evidencia]))
-  const [sonando, setSonando] = useState<{ evidencia: Evidencia; ancla: DOMRect } | null>(null)
+  const [sonando, setSonando] = useState<{ evidencia: Evidencia; ancla: HTMLElement } | null>(null)
+  const lista = useRef<HTMLOListElement>(null)
   const idDueno = datos.ponencias[0]?.idDueno ?? ''
+  /* Solo se desplaza la columna de evidencias: `scrollIntoView` movía también el artículo y la píldora quedaba lejos de su cita. */
   const escuchar = (evidencia: Evidencia, elemento: HTMLElement): void => {
-    setSonando({ evidencia, ancla: elemento.getBoundingClientRect() })
-    document.getElementById(`evidencia-${evidencia.clave}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    setSonando({ evidencia, ancla: elemento })
+    const fila = document.getElementById(`evidencia-${evidencia.clave}`)
+    if (fila !== null && lista.current !== null) {
+      lista.current.scrollTo({ top: fila.offsetTop - 8, behavior: 'smooth' })
+    }
   }
 
   return (
@@ -327,7 +332,7 @@ function Articulo({ produccion, datos }: { produccion: Produccion; datos: DatosD
       {/* Las evidencias al lado del texto: se comprueba sin perder el renglón. */}
       <aside className="sticky top-0 flex max-h-[calc(100dvh-96px)] min-h-0 flex-col gap-3 self-start rounded-[24px] bg-panel p-3">
         <span className="px-2 pt-2 text-xl font-semibold">Evidencias</span>
-        <ol className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+        <ol ref={lista} className="relative flex min-h-0 flex-col gap-2 overflow-y-auto">
           {produccion.evidencias.map((evidencia) => (
             <li
               key={evidencia.clave}

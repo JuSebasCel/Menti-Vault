@@ -35,7 +35,6 @@ const SECCIONES: readonly Entrada[] = [
 ]
 
 const ACCIONES: readonly Entrada[] = [
-  { etiqueta: 'Nueva sesión', ruta: '/agenda?nueva=1', icono: 'calendar_add_on' },
   { etiqueta: 'Invitar ponente', ruta: '/ponentes?invitar=1', icono: 'person_add' },
   { etiqueta: 'Subir ponencia', ruta: '/ponencias?subir=1', icono: 'upload' },
   { etiqueta: 'Nueva memoria', ruta: '/memorias-del-evento?nueva=1', icono: 'note_add' },
@@ -73,7 +72,7 @@ export function ShellDelEvento(): ReactElement {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-fondo font-sans text-texto">
-      <nav aria-label="Navegación principal" className="dock-mind flex w-56 shrink-0 flex-col px-3 py-6">
+      <nav aria-label="Navegación principal" className="dock-mind flex w-56 shrink-0 flex-col px-3 py-4">
         <SelectorDeEvento nombre={datos?.evento.nombre ?? '…'} />
 
         <ul className="flex flex-col">
@@ -84,7 +83,7 @@ export function ShellDelEvento(): ReactElement {
           ))}
         </ul>
 
-        <p className="mt-6 flex h-10 items-center px-6 font-['Inter_Variable'] text-base font-medium text-filete-fuerte">Opciones</p>
+        <p className="mt-4 flex h-10 items-center px-6 font-['Inter_Variable'] text-base font-medium text-filete-fuerte">Opciones</p>
         <ul className="flex flex-col">
           {ACCIONES.map((accion) => (
             <li key={accion.ruta}>

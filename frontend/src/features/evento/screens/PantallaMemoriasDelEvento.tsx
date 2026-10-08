@@ -30,14 +30,22 @@ function rutaDeMiniatura(rutaPdf: string): string {
 
 function Miniatura({ rutaPdf, titulo }: { rutaPdf: string; titulo: string }): ReactElement {
   const [url, setUrl] = useState<string | null>(null)
+  const [cargada, setCargada] = useState(false)
 
   useEffect(() => {
     void direccionDeArchivo(rutaDeMiniatura(rutaPdf)).then(setUrl)
   }, [rutaPdf])
 
   return (
-    <span className="block aspect-[3/4] overflow-hidden rounded-[16px] bg-panel shadow-[0_0_0_1px_var(--bitacora-filete)]">
-      {url === null ? null : <img src={url} alt={`Primera página de ${titulo}`} className="size-full object-cover object-top" loading="lazy" />}
+    <span className={`block aspect-[3/4] overflow-hidden rounded-[16px] bg-panel shadow-[0_0_0_1px_var(--bitacora-filete)] ${cargada ? '' : 'animate-pulse'}`}>
+      {url === null ? null : (
+        <img
+          src={url}
+          alt={`Primera página de ${titulo}`}
+          onLoad={() => setCargada(true)}
+          className={`size-full object-cover object-top transition-opacity duration-500 ${cargada ? 'opacity-100' : 'opacity-0'}`}
+        />
+      )}
     </span>
   )
 }

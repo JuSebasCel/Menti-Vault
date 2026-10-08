@@ -107,7 +107,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         </Tarjeta>
 
         <Tarjeta className="flex flex-col justify-center gap-1">
-          <span className="text-2xl text-texto-tenue">Sin consentimiento:</span>
+          <span className="text-2xl text-texto-tenue">Sin autorizar:</span>
           <span className="text-2xl font-semibold">
             {sinConsentir === 0 ? 'Nadie' : `${sinConsentir} ${sinConsentir === 1 ? 'ponente' : 'ponentes'}`}
           </span>

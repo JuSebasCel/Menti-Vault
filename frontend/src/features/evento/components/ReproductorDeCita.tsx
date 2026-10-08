@@ -27,7 +27,8 @@ export function ReproductorDeCita({
 }: {
   evidencia: Evidencia
   idDueno: string
-  ancla: DOMRect
+  /** El botón de la cita: el reproductor se queda pegado a él aunque se desplace el texto. */
+  ancla: HTMLElement
   alCerrar: () => void
 }): ReactElement {
   const audio = useRef<HTMLAudioElement>(null)
@@ -47,12 +48,24 @@ export function ReproductorDeCita({
         setEstado('sin-audio')
         return
       }
-      elemento.src = url
-      elemento.currentTime = inicio
-      void elemento.play().then(
-        () => setEstado('sonando'),
-        () => setEstado('pausa'),
+      /*
+        El salto al minuto espera a los metadatos: en un .m4a, fijar
+        `currentTime` antes de conocer la duración se ignora y la cita
+        sonaría desde el principio de la charla.
+      */
+      elemento.addEventListener(
+        'loadedmetadata',
+        () => {
+          elemento.currentTime = inicio
+          void elemento.play().then(
+            () => setEstado('sonando'),
+            () => setEstado('pausa'),
+          )
+        },
+        { once: true },
       )
+      elemento.src = url
+      elemento.load()
     })
     return () => {
       vigente = false
@@ -102,15 +115,35 @@ export function ReproductorDeCita({
     }
   }, [alCerrar])
 
-  /* Debajo de la cita si cabe; si no, encima. Siempre dentro de la ventana. */
-  const [posicion, setPosicion] = useState({ top: ancla.bottom + 8, left: ancla.left })
+  /*
+    Debajo de la cita si cabe; si no, encima. Siempre dentro de la ventana, y
+    recolocado al desplazar: el artículo se lee con scroll y una píldora fija
+    se quedaba flotando lejos de su cita.
+  */
+  const [posicion, setPosicion] = useState({ top: 0, left: 0 })
   useLayoutEffect(() => {
-    const alto = caja.current?.offsetHeight ?? 72
-    const abajo = ancla.bottom + 8 + alto <= window.innerHeight - 8
-    setPosicion({
-      top: abajo ? ancla.bottom + 8 : ancla.top - 8 - alto,
-      left: Math.min(Math.max(8, ancla.left + ancla.width / 2 - ANCHO / 2), window.innerWidth - ANCHO - 8),
-    })
+    let cuadro = 0
+    const colocar = (): void => {
+      const caja_ = ancla.getBoundingClientRect()
+      const alto = caja.current?.offsetHeight ?? 64
+      const abajo = caja_.bottom + 8 + alto <= window.innerHeight - 8
+      setPosicion({
+        top: abajo ? caja_.bottom + 8 : caja_.top - 8 - alto,
+        left: Math.min(Math.max(8, caja_.left + caja_.width / 2 - ANCHO / 2), window.innerWidth - ANCHO - 8),
+      })
+    }
+    const alMover = (): void => {
+      cancelAnimationFrame(cuadro)
+      cuadro = requestAnimationFrame(colocar)
+    }
+    colocar()
+    window.addEventListener('scroll', alMover, true)
+    window.addEventListener('resize', alMover)
+    return () => {
+      cancelAnimationFrame(cuadro)
+      window.removeEventListener('scroll', alMover, true)
+      window.removeEventListener('resize', alMover)
+    }
   }, [ancla])
 
   const alternar = (): void => {
@@ -138,7 +171,7 @@ export function ReproductorDeCita({
       style={{ top: posicion.top, left: posicion.left, width: ANCHO }}
       className="entrar-escalonado fixed z-50 flex items-center gap-3 rounded-full bg-acento py-2 pr-3 pl-2 text-acento-contraste shadow-[0_12px_32px_-10px_rgb(0_0_0/0.5)]"
     >
-      <audio ref={audio} preload="auto" />
+      <audio ref={audio} preload="metadata" />
       <button
         type="button"
         onClick={alternar}
