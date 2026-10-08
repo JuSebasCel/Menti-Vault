@@ -1,14 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Menti Vault">
   <title>Menti Vault</title>
   <!--
-    Marca del producto: el dial de una caja fuerte recortado en un cuadrado
-    redondeado. Es la misma figura que `MarcaDeMenti` en
-    `src/shared/ui/Logo.tsx`.
+    La "M" de Menti con el trazo redondeado de la píldora del dock, recortada
+    en un cuadrado de esquinas suaves. Reemplaza al dial de caja fuerte: a
+    16px el dial se volvía un círculo con un punto, y no se distinguía de
+    cualquier otra pestaña.
 
-    El color sigue al tema del navegador, no al de la app (la pestaña no
-    sabe de él): blanco sobre una barra de pestañas oscura, como se ve en la
-    pantalla de acceso con el tema oscuro, y negro sobre una clara. Fijo en
-    negro, en un navegador oscuro el logo desaparecía.
+    El color sigue al tema del navegador, no al de la app (la pestaña no sabe
+    de él): negro sobre una barra clara y blanco sobre una oscura.
   -->
   <style>
     .marca { fill: #111111; }
@@ -17,12 +16,17 @@
     }
   </style>
   <defs>
-    <mask id="dial">
-      <rect width="32" height="32" rx="9" fill="white" />
-      <circle cx="16" cy="16" r="8.25" fill="none" stroke="black" stroke-width="2.75" />
-      <circle cx="16" cy="16" r="2.4" fill="black" />
-      <path d="M16 16 L20.6 11.4" stroke="black" stroke-width="2.75" stroke-linecap="round" />
+    <mask id="m">
+      <rect width="32" height="32" rx="10" fill="white" />
+      <path
+        d="M9.5 22 V10.5 L16 17 L22.5 10.5 V22"
+        fill="none"
+        stroke="black"
+        stroke-width="3.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
     </mask>
   </defs>
-  <rect class="marca" width="32" height="32" rx="9" mask="url(#dial)" />
+  <rect class="marca" width="32" height="32" rx="10" mask="url(#m)" />
 </svg>
