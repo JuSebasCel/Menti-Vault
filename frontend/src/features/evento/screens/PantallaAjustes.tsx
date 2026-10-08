@@ -4,6 +4,7 @@ import { cambiarCierreDelSitio, useCierreDelSitio } from '@/features/configuraci
 import { useTema } from '@/shared/tema'
 import type { Tema } from '@/shared/tema'
 import { Avatar, BotonMind, Chip, EncabezadoDePagina, Icono, Tarjeta } from '../components/piezas'
+import { cambiarDemostracion, useDemostracion } from '../demostracion'
 import { iniciales } from '../formato'
 
 /*
@@ -19,6 +20,7 @@ function Ajustes(): ReactElement {
   const { usuario, cerrarSesion } = useSession()
   const { tema, establecerTema } = useTema()
   const cierre = useCierreDelSitio(usuario?.id ?? '')
+  const demostracion = useDemostracion()
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,6 +41,24 @@ function Ajustes(): ReactElement {
                   {etiqueta}
                 </Chip>
               ))}
+            </div>
+          </Seccion>
+
+          <Seccion titulo="Modo demostración" icono="slideshow">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-texto-tenue">
+                {demostracion
+                  ? 'Crear sesiones, ponentes, grabaciones o piezas se recorre entero, pero no se guarda.'
+                  : 'Todo lo que se crea se guarda en el evento.'}
+              </span>
+              <div className="flex shrink-0 gap-2">
+                <Chip elegido={demostracion} onClick={() => cambiarDemostracion(true)}>
+                  Encendido
+                </Chip>
+                <Chip elegido={!demostracion} onClick={() => cambiarDemostracion(false)}>
+                  Apagado
+                </Chip>
+              </div>
             </div>
           </Seccion>
 

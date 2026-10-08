@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { useEvento } from '@/features/evento/useEvento'
-import { anclaDelDock } from '@/features/evento/anclaDelDock'
 import { elegirEvento } from '@/features/evento/eventoElegido'
 import { crearEvento, listarEventos } from '@/features/evento/repositorio'
 import type { ResumenDeEvento } from '@/features/evento/tipos'
@@ -115,10 +114,7 @@ export function ShellDelEvento(): ReactElement {
                 <Item
                 entrada={accion}
                 activa={false}
-                alPulsar={(boton) => {
-                  anclaDelDock.current = boton
-                  void navegar(`${accion.ruta}&desde=dock`)
-                }}
+                alPulsar={() => void navegar(accion.ruta)}
               />
               </li>
             ))}

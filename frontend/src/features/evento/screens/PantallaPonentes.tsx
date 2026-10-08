@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router'
 import { mensajeDeError } from '@/shared/errors'
 import { Modal } from '@/shared/ui'
 import { AsistenteDeInvitacion } from '../components/AsistenteDeInvitacion'
-import { anclaDelDock } from '../anclaDelDock'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
@@ -37,7 +36,6 @@ type Orden = 'nombre' | 'ponencias'
 
 function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
-  const desdeDock = parametros.get('desde') === 'dock'
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [orden, setOrden] = useState<Orden>('nombre')
   const [origen, setOrigen] = useState<DOMRect | null>(null)
@@ -65,7 +63,6 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
     const siguientes = new URLSearchParams(parametros)
     if (valor === null) {
       siguientes.delete(clave)
-      siguientes.delete('desde')
     } else {
       siguientes.set(clave, valor)
     }
@@ -192,9 +189,8 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
         abierto={invitar !== null}
         alCerrar={() => cambiar('invitar', null)}
         titulo={invitar === '1' ? 'Nuevo ponente' : 'Reenviar invitación'}
-        anclaEn={desdeDock ? anclaDelDock : botonNuevo}
+        anclaEn={botonNuevo}
         anclaje="disparador"
-        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})}
         ancho="normal"
         cerrarAlPulsarElVelo={false}
       >

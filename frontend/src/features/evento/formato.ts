@@ -16,7 +16,7 @@ import type { EstadoDeAprobacion, EstadoDeConsentimiento, Publicacion } from './
   la pantalla haría dudar de si es el mismo.
 */
 export const CONSENTIMIENTO: Record<EstadoDeConsentimiento, { etiqueta: string; tono: Tono }> = {
-  'sin-enviar': { etiqueta: 'Esperando respuesta', tono: 'ambar' },
+  'sin-enviar': { etiqueta: 'Falta su correo', tono: 'gris' },
   enviado: { etiqueta: 'Esperando respuesta', tono: 'ambar' },
   aceptado: { etiqueta: 'Autorizó', tono: 'verde' },
   rechazado: { etiqueta: 'No autorizó', tono: 'rojo' },

@@ -97,8 +97,13 @@ export function ReproductorDeCita({
   }, [estado, inicio])
 
   useEffect(() => {
+    /*
+      En captura y sin dejarla pasar: el artículo de detrás también se cierra
+      con Escape, y la tecla tiene que cerrar solo lo que está encima.
+    */
     const alPulsar = (evento: KeyboardEvent): void => {
       if (evento.key === 'Escape') {
+        evento.stopImmediatePropagation()
         alCerrar()
       }
     }
@@ -107,10 +112,10 @@ export function ReproductorDeCita({
         alCerrar()
       }
     }
-    window.addEventListener('keydown', alPulsar)
+    window.addEventListener('keydown', alPulsar, true)
     window.addEventListener('mousedown', alPulsarFuera)
     return () => {
-      window.removeEventListener('keydown', alPulsar)
+      window.removeEventListener('keydown', alPulsar, true)
       window.removeEventListener('mousedown', alPulsarFuera)
     }
   }, [alCerrar])

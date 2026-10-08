@@ -5,7 +5,6 @@ import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDe
 import { GaleriaDeFotos } from '../components/GaleriaDeFotos'
 import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
 import { AsistenteDeGrabacion } from '../components/AsistenteDeGrabacion'
-import { anclaDelDock } from '../anclaDelDock'
 import { descargarPonencia } from '../descargarPonencia'
 import { Modal } from '@/shared/ui'
 import { carpetaDeFotosDeSesion, leerTranscripcion } from '../repositorio'
@@ -40,7 +39,6 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
   const subiendo = parametros.get('subir') === '1'
   const botonSubir = useRef<HTMLButtonElement>(null)
-  const desdeDock = parametros.get('desde') === 'dock'
 
   const dias = useMemo(() => [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort(), [datos.ponencias])
   const visibles = datos.ponencias.filter(
@@ -55,7 +53,6 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
     const siguientes = new URLSearchParams(parametros)
     if (valor === null) {
       siguientes.delete(clave)
-      siguientes.delete('desde')
       if (clave === 'subir') {
         siguientes.delete('sesion')
       }
@@ -206,8 +203,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
         alCerrar={() => cambiar('subir', null)}
         titulo="Subir grabación"
         anclaje="disparador"
-        anclaEn={desdeDock ? anclaDelDock : botonSubir}
-        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})}
+        anclaEn={botonSubir}
         ancho="normal"
         cerrarAlPulsarElVelo={false}
       >

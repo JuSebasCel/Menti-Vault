@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from '@/features/auth/session'
 import { duracionDeArchivo } from '@/features/conferencias/carga/archivo'
 import { mensajeDeError } from '@/shared/errors'
+import { enDemostracion } from '../demostracion'
 import { esVideo, extraerAudio } from '../extraerAudio'
 import { fecha, sumarMinutos } from '../formato'
 import { carpetaDeFotosDeSesion, crearSesion, subirFoto, subirGrabacion } from '../repositorio'
@@ -138,7 +139,9 @@ export function AsistenteDeGrabacion({
 
       for (const [indice, foto] of fotos.entries()) {
         setFase(`Subiendo fotos (${indice + 1} de ${fotos.length})…`)
-        await subirFoto(carpetaDeFotosDeSesion(usuario.id, id), foto)
+        if (!enDemostracion()) {
+          await subirFoto(carpetaDeFotosDeSesion(usuario.id, id), foto)
+        }
       }
 
       invalidar()
@@ -341,7 +344,11 @@ export function AsistenteDeGrabacion({
             <Icono nombre="check" className="text-3xl" />
           </span>
           <span className="text-[36px] leading-none font-semibold">Grabación subida</span>
-          <p className="max-w-sm text-texto-tenue">La transcripción sigue en segundo plano; puedes cerrar esto.</p>
+          <p className="max-w-sm text-texto-tenue">
+            {enDemostracion()
+              ? 'Modo demostración: el recorrido es el real, pero no se guardó nada.'
+              : 'La transcripción sigue en segundo plano; puedes cerrar esto.'}
+          </p>
           <BotonMind variante="tenue" onClick={alTerminar} className="w-full max-w-sm justify-center">
             Salir
           </BotonMind>

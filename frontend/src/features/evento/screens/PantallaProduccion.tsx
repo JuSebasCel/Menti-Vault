@@ -2,7 +2,6 @@ import type { ReactElement, ReactNode } from 'react'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { Modal } from '@/shared/ui'
-import { anclaDelDock } from '../anclaDelDock'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { PanelLateral } from '../components/PanelLateral'
 import { ReproductorDeCita } from '../components/ReproductorDeCita'
@@ -27,7 +26,6 @@ export function PantallaProduccion(): ReactElement {
 
 function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
-  const desdeDock = parametros.get('desde') === 'dock'
   const [origen, setOrigen] = useState<DOMRect | null>(null)
   const botonNueva = useRef<HTMLButtonElement>(null)
   const abierta = datos.producciones.find((produccion) => produccion.id === parametros.get('ver')) ?? null
@@ -37,7 +35,6 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
     const siguientes = new URLSearchParams(parametros)
     if (valor === null) {
       siguientes.delete(clave)
-      siguientes.delete('desde')
     } else {
       siguientes.set(clave, valor)
     }
@@ -94,9 +91,8 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
         abierto={creando}
         alCerrar={() => cambiar('nueva', null)}
         titulo="Nuevo artículo"
-        anclaEn={desdeDock ? anclaDelDock : botonNueva}
+        anclaEn={botonNueva}
         anclaje="disparador"
-        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})}
         ancho="normal"
         cerrarAlPulsarElVelo={false}
       >

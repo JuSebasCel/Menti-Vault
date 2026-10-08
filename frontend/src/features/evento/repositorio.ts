@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/supabase/cliente'
+import { enDemostracion, esperaDeDemostracion } from './demostracion'
 import { analizarEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
 import { subirArchivoDeConferencia } from '@/features/conferencias/repositorio/repositorio'
 import { codigoDeErrorDeSupabase } from '@/shared/supabase/consultas'
@@ -251,6 +252,10 @@ export async function registrarInvitacion(
   correo: string,
   usos: readonly UsoDelConsentimiento[],
 ): Promise<ResultadoDeConsulta<null>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: null }
+  }
   const { error } = await supabase
     .from('ponentes')
     .update({
@@ -272,13 +277,18 @@ export async function crearPonenteInvitado(
   correo: string,
   usos: readonly UsoDelConsentimiento[],
 ): Promise<ResultadoDeConsulta<null>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: null }
+  }
+  const sinCorreo = correo.trim() === ''
   const { error } = await supabase.from('ponentes').insert({
     id_evento: idEvento,
     nombre,
-    correo,
-    consentimiento: 'enviado',
+    correo: sinCorreo ? null : correo,
+    consentimiento: sinCorreo ? 'sin-enviar' : 'enviado',
     consentimiento_version: 'reducate-2026-v1',
-    consentimiento_enviado_el: new Date().toISOString(),
+    consentimiento_enviado_el: sinCorreo ? null : new Date().toISOString(),
     consentimiento_usos: Object.fromEntries(usos.map((uso) => [uso, false])),
   })
 
@@ -318,6 +328,10 @@ export async function eliminarPonente(idPonente: string): Promise<ResultadoDeCon
 }
 
 export async function asignarPonente(idConferencia: string, ponente: string): Promise<ResultadoDeConsulta<null>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: null }
+  }
   const { error } = await supabase.from('conferencias').update({ ponente }).eq('id', idConferencia)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
@@ -391,6 +405,10 @@ export async function cambiarEje(
 }
 
 export async function crearEvento(nombre: string): Promise<ResultadoDeConsulta<null>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: null }
+  }
   const { error } = await supabase.from('eventos').insert({ nombre })
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
@@ -451,6 +469,10 @@ export async function crearSesion(
   evento: string,
   cambios: CambiosDeSesion,
 ): Promise<ResultadoDeConsulta<string>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: `demostracion-${Date.now()}` }
+  }
   const { data, error } = await supabase
     .from('conferencias')
     .insert({
@@ -480,6 +502,10 @@ export async function subirGrabacion(
   fuente: 'audio' | 'transcripcion',
   duracionEnSegundos: number,
 ): Promise<ResultadoDeConsulta<null>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: null }
+  }
   const subida = await subirArchivoDeConferencia(idDueno, idConferencia, archivo)
   if (!subida.ok) {
     return subida
@@ -536,6 +562,10 @@ export async function crearPublicacion(
   evento: string,
   pieza: { red: Publicacion['red']; formato: Publicacion['formato']; texto: string; cita: string; ponente: string; idConferencia: string | null },
 ): Promise<ResultadoDeConsulta<null>> {
+  if (enDemostracion()) {
+    await esperaDeDemostracion()
+    return { ok: true, datos: null }
+  }
   const { error } = await supabase.from('publicaciones').insert({
     id_dueno: idDueno,
     evento,
@@ -547,5 +577,11 @@ export async function crearPublicacion(
     ponente: pieza.ponente,
     estado: 'propuesta',
   })
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/* Quitar una sesión de la agenda, con todo lo que cuelga de ella. Es de verdad incluso en demostración: borrar es una decisión explícita. */
+export async function eliminarSesion(idConferencia: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('conferencias').delete().eq('id', idConferencia)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }

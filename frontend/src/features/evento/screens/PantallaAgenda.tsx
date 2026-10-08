@@ -4,14 +4,13 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { mensajeDeError } from '@/shared/errors'
 import { Modal } from '@/shared/ui'
-import { anclaDelDock } from '../anclaDelDock'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { SelectorDeHora } from '../components/SelectorDeHora'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono } from '../components/piezas'
 import { APROBACION, fecha, minutosEntre, sumarMinutos } from '../formato'
-import { actualizarSesion, crearSesion } from '../repositorio'
+import { actualizarSesion, crearSesion, eliminarSesion } from '../repositorio'
 import type { CambiosDeSesion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Ponencia, TipoDeSesion } from '../tipos'
@@ -81,7 +80,6 @@ const DIA_DE_LA_SEMANA = new Intl.DateTimeFormat('es-CO', { weekday: 'short' })
 
 function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
-  const desdeDock = parametros.get('desde') === 'dock'
   const [vista, setVistaEnEstado] = useState<'dias' | 'lista'>(vistaRecordada)
   const [eje, setEje] = useState('todos')
   const [tipo, setTipo] = useState('todos')
@@ -100,9 +98,12 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
   }
 
   const dias = useMemo(() => diasDelEvento(datos), [datos])
-  const sinHora = datos.ponencias.filter((ponencia) => ponencia.horaInicio === null)
+  /* Sin hora, o con un fin anterior al inicio: no tiene un sitio en la cuadrícula y se avisa arriba para corregirla. */
+  const conHoraValida = (ponencia: Ponencia): boolean =>
+    ponencia.horaInicio !== null && ponencia.horaFin !== null && minutosEntre(ponencia.horaInicio, ponencia.horaFin) > 0
+  const sinHora = datos.ponencias.filter((ponencia) => !conHoraValida(ponencia))
   const visibles = datos.ponencias.filter(
-    (ponencia) => ponencia.horaInicio !== null && (eje === 'todos' || ponencia.eje === eje) && (tipo === 'todos' || ponencia.tipo === tipo),
+    (ponencia) => conHoraValida(ponencia) && (eje === 'todos' || ponencia.eje === eje) && (tipo === 'todos' || ponencia.tipo === tipo),
   )
   const editando = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('sesion')) ?? null
   const creando = parametros.get('nueva') === '1'
@@ -111,7 +112,6 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
     const siguientes = new URLSearchParams(parametros)
     if (valor === null) {
       siguientes.delete(clave)
-      siguientes.delete('desde')
     } else {
       siguientes.set(clave, valor)
     }
@@ -135,7 +135,7 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
             className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--tono-ambar)] px-4 text-sm font-medium [color:var(--tono-ambar-texto)]"
           >
             <Icono nombre="schedule" className="text-lg" />
-            {sinHora.length} sin hora
+            {sinHora.length} por ubicar
           </button>
         )}
         <Filtros
@@ -194,13 +194,13 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
       <Modal
         abierto={viendoSinHora}
         alCerrar={() => setViendoSinHora(false)}
-        titulo="Sesiones sin hora"
+        titulo="Sesiones por ubicar"
         anclaje="disparador"
         anclaEn={botonSinHora}
         ancho="angosto"
       >
         <div className="flex flex-col gap-2 pb-2">
-          <p className="text-sm text-texto-tenue">Se subieron antes de tener agenda. Asígnales día y hora.</p>
+          <p className="text-sm text-texto-tenue">No tienen hora, o su fin queda antes del inicio. Corrígelas para que entren a la agenda.</p>
           {sinHora.map((sesion) => (
             <button
               key={sesion.id}
@@ -228,9 +228,8 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
         abierto={creando}
         alCerrar={() => cambiar('nueva', null)}
         titulo="Nueva sesión"
-        anclaEn={desdeDock ? anclaDelDock : botonNueva}
+        anclaEn={botonNueva}
         anclaje="disparador"
-        {...(desdeDock ? { crecerHacia: 'derecha' as const } : {})}
         ancho="normal"
         cerrarAlPulsarElVelo={false}
       >
@@ -287,19 +286,17 @@ function VistaPorDias({
               const inicio = (minutosDe(sesion.horaInicio) ?? 0) - primeraHora * 60
               const fin = (minutosDe(sesion.horaFin) ?? (minutosDe(sesion.horaInicio) ?? 0) + 60) - primeraHora * 60
               const alto = Math.max(((fin - inicio) / 60) * ALTO_DE_HORA - 4, 30)
-              const oscuro = sesion.tipo === 'taller'
               return (
                 <div key={sesion.id} className="group absolute inset-x-1 hover:z-20" style={{ top: (inicio / 60) * ALTO_DE_HORA + 2, height: alto }}>
                   <button
                     type="button"
                     onClick={(evento) => alAbrir(sesion, evento.currentTarget)}
-                    className={`flex size-full cursor-pointer flex-col overflow-hidden rounded-[14px] px-3 py-1.5 text-left transition-transform hover:scale-[1.02] ${oscuro ? 'bg-acento text-acento-contraste' : 'tarjeta-borde bg-fondo text-texto'}`}
+                    className="tarjeta-borde flex size-full cursor-pointer items-start overflow-hidden rounded-[14px] bg-fondo px-3 py-1.5 text-left text-texto transition-transform hover:scale-[1.02]"
                   >
                     <span className="truncate text-[13px] leading-5 font-medium">
-                      <span className={`mr-1.5 font-mono ${oscuro ? 'opacity-70' : 'text-texto-tenue'}`}>{sesion.horaInicio}</span>
+                      <span className="mr-1.5 font-mono text-texto-tenue">{sesion.horaInicio}</span>
                       {sesion.titulo}
                     </span>
-                    {alto > 52 ? <span className={`truncate text-xs ${oscuro ? 'opacity-70' : 'text-texto-tenue'}`}>{sesion.ponente}</span> : null}
                   </button>
 
                   {/* El detalle al pasar el ratón, al lado del bloque y hacia dentro de la pantalla. */}
@@ -418,7 +415,21 @@ function FormularioDeSesion({
     (DURACIONES as readonly number[]).includes(duracionActual) ? duracionActual : inicial?.horaFin == null ? 60 : 'otra',
   )
   const [guardando, setGuardando] = useState(false)
+  const [confirmando, setConfirmando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const borrar = async (): Promise<void> => {
+    if (inicial === null) {
+      return
+    }
+    const resultado = await eliminarSesion(inicial.id)
+    if (!resultado.ok) {
+      setError(mensajeDeError(resultado.codigo))
+      return
+    }
+    invalidar()
+    alTerminar()
+  }
   const poner = <C extends keyof CambiosDeSesion>(clave: C, valor: CambiosDeSesion[C]): void =>
     setCambios((antes) => ({ ...antes, [clave]: valor }))
 
@@ -454,11 +465,19 @@ function FormularioDeSesion({
   }
 
   const campo =
-    'h-12 rounded-2xl bg-panel px-4 text-base text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] outline-none transition-shadow duration-500 focus:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]'
+    'h-12 rounded-2xl bg-fondo px-4 text-base text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] outline-none transition-shadow duration-500 focus:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]'
 
   return (
-    <div className="entrar-escalonado flex flex-col gap-6 px-2 pt-2 pb-2">
-      {inicial === null ? null : <span className="text-[28px] leading-tight font-semibold">{inicial.titulo}</span>}
+    <div className="entrar-escalonado flex flex-col gap-3 px-2 pt-2 pb-2">
+      {inicial === null ? (
+        <div className="flex flex-col items-center gap-3 pb-3 text-center">
+          <Icono nombre="calendar_add_on" className="text-[44px]" />
+          <span className="text-[36px] leading-none font-semibold">Nueva sesión</span>
+          <p className="text-xl text-texto-tenue">Qué, quién, cuándo y dónde.</p>
+        </div>
+      ) : (
+        <span className="text-[28px] leading-tight font-semibold">{inicial.titulo}</span>
+      )}
 
       <Bloque titulo="Qué">
         <label className="flex flex-col gap-1.5">
@@ -545,10 +564,28 @@ function FormularioDeSesion({
           <BotonMind variante="tenue" onClick={alTerminar}>
             Cancelar
           </BotonMind>
+        ) : confirmando ? (
+          <span className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void borrar()}
+              className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--tono-rojo)] px-5 text-sm font-medium [color:var(--tono-rojo-texto)]"
+            >
+              <Icono nombre="delete" className="text-lg" /> Sí, eliminar
+            </button>
+            <BotonMind variante="tenue" onClick={() => setConfirmando(false)}>
+              No
+            </BotonMind>
+          </span>
         ) : (
-          <BotonMind variante="tenue" icono="mic" onClick={() => void navegar(`/ponencias?ver=${inicial.id}`)}>
-            Ver ponencia
-          </BotonMind>
+          <span className="flex items-center gap-2">
+            <BotonMind variante="tenue" icono="delete" onClick={() => setConfirmando(true)}>
+              Eliminar
+            </BotonMind>
+            <BotonMind variante="tenue" icono="mic" onClick={() => void navegar(`/ponencias?ver=${inicial.id}`)}>
+              Ver ponencia
+            </BotonMind>
+          </span>
         )}
         <BotonMind disabled={guardando || !completo} onClick={() => void guardar()}>
           {guardando ? 'Guardando…' : inicial === null ? 'Crear sesión' : 'Guardar'} <Icono nombre="arrow_forward" className="text-lg" />
@@ -565,8 +602,8 @@ function FormularioDeSesion({
 */
 function Bloque({ titulo, children }: { titulo: string; children: ReactNode }): ReactElement {
   return (
-    <section className="relative flex flex-col gap-3 focus-within:z-20">
-      <span className="text-sm font-semibold tracking-wide text-texto-tenue uppercase">{titulo}</span>
+    <section className="relative flex flex-col gap-3 rounded-[20px] bg-panel p-4 focus-within:z-20">
+      <span className="text-xs font-semibold tracking-wide text-texto-tenue uppercase">{titulo}</span>
       {children}
     </section>
   )

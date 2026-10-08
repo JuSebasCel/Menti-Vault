@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useState } from 'react'
 import { mensajeDeError } from '@/shared/errors'
+import { enDemostracion } from '../demostracion'
 import { fecha } from '../formato'
 import { useEvento } from '../useEvento'
 import { asignarPonente, crearPonenteInvitado, registrarInvitacion } from '../repositorio'
@@ -41,6 +42,8 @@ export function AsistenteDeInvitacion({
 
   const nombre = idPonente === null ? nombreNuevo.trim() : (datos.ponentes.find((ponente) => ponente.id === idPonente)?.nombre ?? '')
   const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())
+  /* El correo es opcional: sin él el ponente se agrega igual y su autorización queda por pedir. */
+  const correoAceptable = correo.trim() === '' || correoValido
 
   const enviar = async (): Promise<void> => {
     setEnviando(true)
@@ -112,7 +115,7 @@ export function AsistenteDeInvitacion({
         <>
           <Cabecera icono="mail" titulo="Contacto" texto="A dónde le llega la solicitud de autorización." />
           <div className="w-full max-w-sm text-left">
-            <Campo valor={correo} alCambiar={setCorreo} rotulo="Correo electrónico" ejemplo="Ej. ana@universidad.edu.co" tipo="email" />
+            <Campo valor={correo} alCambiar={setCorreo} rotulo="Correo electrónico (opcional)" ejemplo="Ej. ana@universidad.edu.co" tipo="email" />
           </div>
           <Botonera>
             {idInicial === null ? (
@@ -122,7 +125,7 @@ export function AsistenteDeInvitacion({
             ) : (
               <span />
             )}
-            <BotonMind disabled={!correoValido} onClick={() => setPaso('usos')}>
+            <BotonMind disabled={!correoAceptable} onClick={() => setPaso(correo.trim() === '' ? 'resumen' : 'usos')}>
               Continuar <Icono nombre="arrow_forward" className="text-lg" />
             </BotonMind>
           </Botonera>
@@ -161,13 +164,19 @@ export function AsistenteDeInvitacion({
 
       {paso === 'resumen' ? (
         <>
-          <span className="text-[36px] leading-none font-semibold">Así le llega</span>
+          <span className="text-[36px] leading-none font-semibold">{correo.trim() === '' ? 'Resumen' : 'Así le llega'}</span>
           <div className="w-full text-left">
-            <CorreoDeInvitacion nombre={nombre} correo={correo.trim()} evento={datos.evento.nombre} />
+            {correo.trim() === '' ? (
+              <p className="rounded-2xl bg-panel px-4 py-3 text-texto-tenue">
+                Sin correo: {nombre.split(' ')[0] ?? ''} se agrega al evento y su autorización queda por pedir hasta que tengas cómo escribirle.
+              </p>
+            ) : (
+              <CorreoDeInvitacion nombre={nombre} correo={correo.trim()} evento={datos.evento.nombre} />
+            )}
           </div>
           {error === null ? null : <p className="w-full rounded-2xl bg-[var(--mind-alerta)] px-4 py-3 text-sm [color:var(--mind-alerta-texto)]">{error}</p>}
           <Botonera>
-            <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('usos')}>
+            <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso(correo.trim() === '' ? 'correo' : 'usos')}>
               Ir atrás
             </BotonMind>
             <BotonMind disabled={enviando} onClick={() => void enviar()}>
@@ -183,6 +192,7 @@ export function AsistenteDeInvitacion({
             <Icono nombre="check" className="text-3xl" />
           </span>
           <span className="text-[36px] leading-none font-semibold">Ponente agregado</span>
+          {enDemostracion() ? <p className="max-w-sm text-texto-tenue">Modo demostración: no se guardó nada.</p> : null}
           <BotonMind variante="tenue" onClick={alTerminar} className="w-full max-w-sm justify-center">
             Salir
           </BotonMind>

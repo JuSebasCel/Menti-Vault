@@ -52,7 +52,7 @@ export function SelectorDeHora({
         type="button"
         onClick={() => setAbierto(!abierto)}
         aria-expanded={abierto}
-        className="flex h-12 cursor-pointer items-center gap-2 rounded-2xl bg-panel px-4 text-left shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)]"
+        className="flex h-12 cursor-pointer items-center gap-2 rounded-2xl bg-fondo px-4 text-left shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)]"
       >
         <Icono nombre="schedule" relleno={false} className="text-xl text-texto-tenue" />
         <span className={`flex-1 font-mono text-base ${valor === '' ? 'text-texto-tenue' : 'text-texto'}`}>{valor === '' ? '--:--' : valor}</span>
