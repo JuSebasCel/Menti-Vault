@@ -558,9 +558,14 @@ function FormularioDeSesion({
   )
 }
 
+/*
+  Cada bloque es su propia capa (lo anima la entrada), así que el que tiene
+  el foco —el de la hora, con su lista abierta— sube por encima del
+  siguiente; sin esto la lista de horas quedaba debajo de "Dónde".
+*/
 function Bloque({ titulo, children }: { titulo: string; children: ReactNode }): ReactElement {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="relative flex flex-col gap-3 focus-within:z-20">
       <span className="text-sm font-semibold tracking-wide text-texto-tenue uppercase">{titulo}</span>
       {children}
     </section>

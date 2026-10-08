@@ -315,6 +315,11 @@ export async function eliminarPonente(idPonente: string): Promise<ResultadoDeCon
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
 
+export async function asignarPonente(idConferencia: string, ponente: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('conferencias').update({ ponente }).eq('id', idConferencia)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
 export async function pedirAprobacion(idConferencia: string): Promise<ResultadoDeConsulta<null>> {
   const { error } = await supabase.from('conferencias').update({ aprobacion: 'enviada' }).eq('id', idConferencia)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }

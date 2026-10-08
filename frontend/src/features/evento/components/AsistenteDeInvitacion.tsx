@@ -1,8 +1,9 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useState } from 'react'
 import { mensajeDeError } from '@/shared/errors'
+import { fecha } from '../formato'
 import { useEvento } from '../useEvento'
-import { crearPonenteInvitado, registrarInvitacion } from '../repositorio'
+import { asignarPonente, crearPonenteInvitado, registrarInvitacion } from '../repositorio'
 import { USOS_DEL_CONSENTIMIENTO } from '../tipos'
 import type { DatosDelEvento, UsoDelConsentimiento } from '../tipos'
 import { BotonMind, Icono } from './piezas'
@@ -16,7 +17,7 @@ import { CorreoDeInvitacion } from './VistaDelPonente'
   quitar uno por uno: un evento que no va a publicar en redes no tiene por qué
   pedir ese permiso, y pedir de más es lo que hace que la gente diga que no.
 */
-type Paso = 'quien' | 'correo' | 'usos' | 'resumen' | 'hecho'
+type Paso = 'quien' | 'sesion' | 'correo' | 'usos' | 'resumen' | 'hecho'
 
 export function AsistenteDeInvitacion({
   datos,
@@ -34,6 +35,7 @@ export function AsistenteDeInvitacion({
   const [nombreNuevo, setNombreNuevo] = useState('')
   const [correo, setCorreo] = useState(datos.ponentes.find((ponente) => ponente.id === idInicial)?.correo ?? '')
   const [usos, setUsos] = useState<UsoDelConsentimiento[]>(USOS_DEL_CONSENTIMIENTO.map((uso) => uso.clave))
+  const [idSesion, setIdSesion] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,6 +54,9 @@ export function AsistenteDeInvitacion({
       setError(mensajeDeError(resultado.codigo))
       return
     }
+    if (idSesion !== null) {
+      await asignarPonente(idSesion, nombre)
+    }
     refrescar()
     setPaso('hecho')
   }
@@ -65,8 +70,39 @@ export function AsistenteDeInvitacion({
             <Campo valor={nombreNuevo} alCambiar={setNombreNuevo} rotulo="Nombre completo" ejemplo="Ej. Ana López" />
           </div>
           <Botonera>
-            <BotonMind disabled={nombre === ''} onClick={() => setPaso('correo')} className="w-full justify-center">
+            <BotonMind disabled={nombre === ''} onClick={() => setPaso('sesion')} className="w-full justify-center">
               Continuar <Icono nombre="arrow_forward" className="text-lg" />
+            </BotonMind>
+          </Botonera>
+        </>
+      ) : null}
+
+      {paso === 'sesion' ? (
+        <>
+          <Cabecera icono="event" titulo="Su sesión" texto="Elige la sesión de la agenda que va a dar." />
+          <div className="flex max-h-72 w-full max-w-md flex-col gap-2 overflow-y-auto text-left">
+            {datos.ponencias
+              .filter((ponencia) => ponencia.horaInicio !== null)
+              .map((ponencia) => (
+                <button
+                  key={ponencia.id}
+                  type="button"
+                  onClick={() => setIdSesion(idSesion === ponencia.id ? null : ponencia.id)}
+                  className={`flex cursor-pointer flex-col rounded-2xl px-4 py-3 text-left transition-colors ${idSesion === ponencia.id ? 'bg-acento text-acento-contraste' : 'bg-panel hover:bg-[var(--mind-variante)]'}`}
+                >
+                  <span className="truncate font-medium">{ponencia.titulo}</span>
+                  <span className={`text-sm ${idSesion === ponencia.id ? 'opacity-70' : 'text-texto-tenue'}`}>
+                    {fecha(ponencia.fecha)} · {ponencia.horaInicio} · {ponencia.ponente || 'sin ponente'}
+                  </span>
+                </button>
+              ))}
+          </div>
+          <Botonera>
+            <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('quien')}>
+              Atrás
+            </BotonMind>
+            <BotonMind onClick={() => setPaso('correo')}>
+              {idSesion === null ? 'La asigno después' : 'Continuar'} <Icono nombre="arrow_forward" className="text-lg" />
             </BotonMind>
           </Botonera>
         </>
@@ -80,7 +116,7 @@ export function AsistenteDeInvitacion({
           </div>
           <Botonera>
             {idInicial === null ? (
-              <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('quien')}>
+              <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('sesion')}>
                 Atrás
               </BotonMind>
             ) : (
