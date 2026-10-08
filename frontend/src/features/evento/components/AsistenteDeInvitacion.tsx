@@ -29,11 +29,10 @@ export function AsistenteDeInvitacion({
   alTerminar: () => void
 }): ReactElement {
   const { invalidar: refrescar } = useEvento()
-  const pendientes = datos.ponentes.filter((ponente) => ponente.consentimiento !== 'aceptado')
   const [paso, setPaso] = useState<Paso>(idInicial === null ? 'quien' : 'correo')
-  const [idPonente, setIdPonente] = useState<string | null>(idInicial ?? pendientes[0]?.id ?? null)
+  const [idPonente] = useState<string | null>(idInicial)
   const [nombreNuevo, setNombreNuevo] = useState('')
-  const [correo, setCorreo] = useState('')
+  const [correo, setCorreo] = useState(datos.ponentes.find((ponente) => ponente.id === idInicial)?.correo ?? '')
   const [usos, setUsos] = useState<UsoDelConsentimiento[]>(USOS_DEL_CONSENTIMIENTO.map((uso) => uso.clave))
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,26 +60,9 @@ export function AsistenteDeInvitacion({
     <div key={paso} className="entrar-escalonado flex flex-col items-center gap-6 px-6 pt-2 pb-4 text-center">
       {paso === 'quien' ? (
         <>
-          <Cabecera icono="person_add" titulo="Nuevo ponente" texto="Empezamos por quién es." />
-          <div className="flex w-full max-w-sm flex-col gap-2 text-left">
-            {pendientes.map((ponente) => (
-              <OpcionDePonente
-                key={ponente.id}
-                elegido={idPonente === ponente.id}
-                titulo={ponente.nombre}
-                detalle={ponente.consentimiento === 'enviado' ? 'Ya invitado, sin respuesta: se reenvía' : 'Del directorio del evento'}
-                alElegir={() => setIdPonente(ponente.id)}
-              />
-            ))}
-            <OpcionDePonente
-              elegido={idPonente === null}
-              titulo="Otra persona"
-              detalle="Alguien que todavía no está en el directorio"
-              alElegir={() => setIdPonente(null)}
-            />
-            {idPonente === null ? (
-              <Campo valor={nombreNuevo} alCambiar={setNombreNuevo} rotulo="Nombre completo" ejemplo="Ej. Ana López" />
-            ) : null}
+          <Cabecera icono="person_add" titulo="Nuevo ponente" texto="Quién va a participar." />
+          <div className="flex w-full max-w-sm flex-col gap-3 text-left">
+            <Campo valor={nombreNuevo} alCambiar={setNombreNuevo} rotulo="Nombre completo" ejemplo="Ej. Ana López" />
           </div>
           <Botonera>
             <BotonMind disabled={nombre === ''} onClick={() => setPaso('correo')} className="w-full justify-center">
@@ -97,9 +79,13 @@ export function AsistenteDeInvitacion({
             <Campo valor={correo} alCambiar={setCorreo} rotulo="Correo electrónico" ejemplo="Ej. ana@universidad.edu.co" tipo="email" />
           </div>
           <Botonera>
-            <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('quien')}>
-              Atrás
-            </BotonMind>
+            {idInicial === null ? (
+              <BotonMind variante="tenue" icono="arrow_back" onClick={() => setPaso('quien')}>
+                Atrás
+              </BotonMind>
+            ) : (
+              <span />
+            )}
             <BotonMind disabled={!correoValido} onClick={() => setPaso('usos')}>
               Continuar <Icono nombre="arrow_forward" className="text-lg" />
             </BotonMind>
@@ -208,28 +194,5 @@ function Campo({
         className="h-12 rounded-2xl bg-panel px-4 text-base text-texto shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] transition-shadow duration-500 outline-none focus:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]"
       />
     </label>
-  )
-}
-
-function OpcionDePonente({
-  elegido,
-  titulo,
-  detalle,
-  alElegir,
-}: {
-  elegido: boolean
-  titulo: string
-  detalle: string
-  alElegir: () => void
-}): ReactElement {
-  return (
-    <button
-      type="button"
-      onClick={alElegir}
-      className={`flex cursor-pointer flex-col rounded-2xl px-4 py-3 text-left transition-colors ${elegido ? 'bg-acento text-acento-contraste' : 'bg-panel hover:bg-acento-tenue'}`}
-    >
-      <span className="font-medium">{titulo}</span>
-      <span className={`text-sm ${elegido ? 'opacity-70' : 'text-texto-tenue'}`}>{detalle}</span>
-    </button>
   )
 }

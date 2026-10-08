@@ -283,6 +283,38 @@ export async function crearPonenteInvitado(
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
 
+/*
+  Editar un ponente. Renombrarlo cambia también el nombre en sus ponencias
+  del evento: la ponencia lo guarda como texto, y dejar el viejo la separaría
+  de su ficha (y de su autorización) sin aviso.
+*/
+export async function actualizarPonente(
+  ponente: { id: string; nombre: string },
+  evento: string,
+  cambios: { nombre: string; correo: string; institucion: string },
+): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase
+    .from('ponentes')
+    .update({ nombre: cambios.nombre, correo: cambios.correo || null, institucion: cambios.institucion })
+    .eq('id', ponente.id)
+  if (error !== null) {
+    return { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+  }
+  if (cambios.nombre !== ponente.nombre) {
+    const renombrado = await supabase.from('conferencias').update({ ponente: cambios.nombre }).eq('evento', evento).eq('ponente', ponente.nombre)
+    if (renombrado.error !== null) {
+      return { ok: false, codigo: codigoDeErrorDeSupabase(renombrado.error) }
+    }
+  }
+  return { ok: true, datos: null }
+}
+
+/* Quitar a un ponente del evento. Sus ponencias se quedan: son grabaciones del evento, no de su ficha. */
+export async function eliminarPonente(idPonente: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('ponentes').delete().eq('id', idPonente)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
 export async function pedirAprobacion(idConferencia: string): Promise<ResultadoDeConsulta<null>> {
   const { error } = await supabase.from('conferencias').update({ aprobacion: 'enviada' }).eq('id', idConferencia)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }

@@ -7,6 +7,7 @@ import { elegirEvento } from '@/features/evento/eventoElegido'
 import { crearEvento, listarEventos } from '@/features/evento/repositorio'
 import type { ResumenDeEvento } from '@/features/evento/tipos'
 import { Icono } from '@/features/evento/components/piezas'
+import { ProveedorDeApiKey } from '@/features/configuracion/ProveedorDeApiKey'
 
 /*
   El armazón del producto reorientado: un evento y su ciclo editorial.
@@ -41,7 +42,15 @@ const ACCIONES: readonly Entrada[] = [
   { etiqueta: 'Nuevo artículo', ruta: '/articulos?nueva=1', icono: 'edit_note' },
 ]
 
-function Item({ entrada, activa, alPulsar }: { entrada: Entrada; activa: boolean; alPulsar?: () => void }): ReactElement {
+function Item({
+  entrada,
+  activa,
+  alPulsar,
+}: {
+  entrada: Entrada
+  activa: boolean
+  alPulsar?: () => void
+}): ReactElement {
   const contenido = (
     <>
       <span className="soporte">
@@ -70,40 +79,59 @@ export function ShellDelEvento(): ReactElement {
   const navegar = useNavigate()
   const { pathname } = useLocation()
 
+  /*
+    El proveedor de la clave de IA envuelve el shell porque el flujo de carga
+    (que se reusa del armazón anterior) lo exige: sin él, abrir Ponencias
+    tumbaba la app entera con la pantalla en blanco.
+  */
   return (
-    <div className="flex h-dvh overflow-hidden bg-fondo font-sans text-texto">
-      <nav aria-label="Navegación principal" className="dock-mind flex w-56 shrink-0 flex-col px-3 py-4">
-        <SelectorDeEvento nombre={datos?.evento.nombre ?? '…'} />
+    <ProveedorDeApiKey>
+      <div className="flex h-dvh overflow-hidden bg-fondo font-sans text-texto">
+        <nav
+          aria-label="Navegación principal"
+          className="dock-mind flex w-56 shrink-0 flex-col px-3 py-4"
+        >
+          <SelectorDeEvento nombre={datos?.evento.nombre ?? '…'} />
 
-        <ul className="flex flex-col">
-          {SECCIONES.map((seccion) => (
-            <li key={seccion.ruta}>
-              <Item entrada={seccion} activa={pathname === seccion.ruta || pathname.startsWith(`${seccion.ruta}/`)} />
-            </li>
-          ))}
-        </ul>
+          <ul className="flex flex-col">
+            {SECCIONES.map((seccion) => (
+              <li key={seccion.ruta}>
+                <Item
+                  entrada={seccion}
+                  activa={pathname === seccion.ruta || pathname.startsWith(`${seccion.ruta}/`)}
+                />
+              </li>
+            ))}
+          </ul>
 
-        <p className="mt-4 flex h-10 items-center px-6 font-['Inter_Variable'] text-base font-medium text-filete-fuerte">Opciones</p>
-        <ul className="flex flex-col">
-          {ACCIONES.map((accion) => (
-            <li key={accion.ruta}>
-              <Item entrada={accion} activa={false} alPulsar={() => void navegar(accion.ruta)} />
-            </li>
-          ))}
-        </ul>
+          <p className="mt-4 flex h-10 items-center px-6 font-['Inter_Variable'] text-base font-medium text-filete-fuerte">
+            Opciones
+          </p>
+          <ul className="flex flex-col">
+            {ACCIONES.map((accion) => (
+              <li key={accion.ruta}>
+                <Item entrada={accion} activa={false} alPulsar={() => void navegar(accion.ruta)} />
+              </li>
+            ))}
+          </ul>
 
-        <div className="mt-auto flex flex-col pt-6">
-          <Item
-            entrada={{ etiqueta: usuario?.nombre.split(' ')[0] ?? 'Cuenta', ruta: '/ajustes', icono: 'settings' }}
-            activa={pathname === '/ajustes'}
-          />
-        </div>
-      </nav>
+          <div className="mt-auto flex flex-col pt-6">
+            <Item
+              entrada={{
+                etiqueta: usuario?.nombre.split(' ')[0] ?? 'Cuenta',
+                ruta: '/ajustes',
+                icono: 'settings',
+              }}
+              activa={pathname === '/ajustes'}
+            />
+          </div>
+        </nav>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 pl-2">
-        <Outlet />
-      </main>
-    </div>
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 pl-2">
+          <Outlet />
+        </main>
+      </div>
+    </ProveedorDeApiKey>
   )
 }
 
@@ -143,7 +171,9 @@ function SelectorDeEvento({ nombre }: { nombre: string }): ReactElement {
         className="flex w-full cursor-pointer items-center gap-2 rounded-[20px] bg-panel px-4 py-3 text-left transition-colors hover:bg-[var(--mind-variante)]"
       >
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-[11px] font-medium tracking-wide text-texto-tenue uppercase">Evento</span>
+          <span className="text-[11px] font-medium tracking-wide text-texto-tenue uppercase">
+            Evento
+          </span>
           <span className="truncate text-[15px] font-semibold text-texto">{nombre}</span>
         </span>
         <Icono nombre="unfold_more" className="text-xl text-texto-tenue" />
