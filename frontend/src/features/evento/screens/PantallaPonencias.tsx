@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { ModalDeCarga } from '@/features/conferencias/components'
 import { FragmentoDeAudio } from '@/features/conferencias/components/FragmentoDeAudio'
+import { GaleriaDeFotos } from '../components/GaleriaDeFotos'
 import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
+import { carpetaDeFotosDeSesion, leerTranscripcion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
@@ -11,7 +13,6 @@ import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
 import { APROBACION, duracion, estaAprobada, fecha, fechaYHora, minuto } from '../formato'
-import { leerTranscripcion } from '../repositorio'
 import type { DatosDelEvento, Ponencia, Segmento } from '../tipos'
 
 /*
@@ -226,7 +227,16 @@ function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; d
       </div>
 
       {pestana === 'transcripcion' ? <Transcripcion ponencia={ponencia} /> : null}
-      {pestana === 'material' ? <MaterialDeApoyo idDueno={ponencia.idDueno} idConferencia={ponencia.id} /> : null}
+      {pestana === 'material' ? (
+        <>
+          <MaterialDeApoyo idDueno={ponencia.idDueno} idConferencia={ponencia.id} />
+          <GaleriaDeFotos
+            carpeta={carpetaDeFotosDeSesion(ponencia.idDueno, ponencia.id)}
+            titulo="Fotos de la sesión"
+            vacio="Fotos del ponente o del público: se usan para agradecer en redes."
+          />
+        </>
+      ) : null}
       {pestana === 'memoria' ? (
         memoria?.archivoPdf == null ? (
           <Tarjeta>

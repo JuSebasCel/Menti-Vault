@@ -455,3 +455,58 @@ export async function crearSesion(
   })
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
+
+export type Foto = { readonly ruta: string; readonly nombre: string }
+
+/*
+  Fotos del evento y de cada sesión, en su propia carpeta (`fotos/`) y no en
+  el material de apoyo: una foto de grupo sirve para agradecer en redes, una
+  diapositiva no, y mezclarlas haría que las sugerencias propusieran publicar
+  una lámina de PowerPoint.
+*/
+export function carpetaDeFotosDelEvento(idDueno: string, evento: string): string {
+  return `${idDueno}/eventos/${evento.normalize('NFD').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}/fotos`
+}
+
+export function carpetaDeFotosDeSesion(idDueno: string, idConferencia: string): string {
+  return `${idDueno}/${idConferencia}/fotos`
+}
+
+export async function listarFotos(carpeta: string): Promise<readonly Foto[]> {
+  const { data } = await supabase.storage.from(BUCKET).list(carpeta, { sortBy: { column: 'created_at', order: 'desc' } })
+  return (data ?? [])
+    .filter((objeto) => objeto.metadata !== null && /\.(png|jpe?g|webp)$/i.test(objeto.name))
+    .map((objeto) => ({ ruta: `${carpeta}/${objeto.name}`, nombre: objeto.name }))
+}
+
+export async function subirFoto(carpeta: string, archivo: File): Promise<ResultadoDeConsulta<null>> {
+  const extension = archivo.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(`${carpeta}/foto-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extension}`, archivo, { contentType: archivo.type })
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: 'CARGA_ARCHIVO_RECHAZADO' }
+}
+
+export async function eliminarFoto(ruta: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.storage.from(BUCKET).remove([ruta])
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: 'DATOS_FALLO_INESPERADO' }
+}
+
+export async function crearPublicacion(
+  idDueno: string,
+  evento: string,
+  pieza: { red: Publicacion['red']; formato: Publicacion['formato']; texto: string; cita: string; ponente: string; idConferencia: string | null },
+): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('publicaciones').insert({
+    id_dueno: idDueno,
+    evento,
+    id_conferencia: pieza.idConferencia,
+    red: pieza.red,
+    formato: pieza.formato,
+    texto: pieza.texto,
+    cita: pieza.cita,
+    ponente: pieza.ponente,
+    estado: 'propuesta',
+  })
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}

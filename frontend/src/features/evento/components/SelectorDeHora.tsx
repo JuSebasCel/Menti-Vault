@@ -83,17 +83,3 @@ export function SelectorDeHora({
     </div>
   )
 }
-
-export function sumarMinutos(hora: string, minutos: number): string {
-  const [horas, mins] = hora.split(':').map(Number)
-  const total = Math.min((horas ?? 0) * 60 + (mins ?? 0) + minutos, 23 * 60 + 59)
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
-
-export function minutosEntre(inicio: string, fin: string): number {
-  const aMinutos = (hora: string): number => {
-    const [horas, mins] = hora.split(':').map(Number)
-    return (horas ?? 0) * 60 + (mins ?? 0)
-  }
-  return aMinutos(fin) - aMinutos(inicio)
-}
