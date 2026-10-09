@@ -92,6 +92,8 @@ function mapearPonencia(fila: Fila): Ponencia {
     tipo: (texto(fila['tipo_de_sesion']) || 'conferencia') as Ponencia['tipo'],
     eje: texto(fila['eje']),
     tieneTranscripcion: texto(fila['estado']) === 'procesada',
+    estado: (texto(fila['estado']) || 'en-cola') as Ponencia['estado'],
+    tieneFuente: texto(fila['fuente']) !== '',
     cargadaEl: texto(fila['cargada_el']),
   }
 }

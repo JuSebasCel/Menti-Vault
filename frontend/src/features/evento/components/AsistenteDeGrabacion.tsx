@@ -172,13 +172,14 @@ export function AsistenteDeGrabacion({
                   <button
                     key={sesion.id}
                     type="button"
+                    disabled={sesion.estado === 'procesando'}
                     onClick={() => setIdSesion(sesion.id)}
-                    className={`flex cursor-pointer flex-col rounded-2xl px-4 py-3 text-left transition-colors ${idSesion === sesion.id ? 'bg-acento text-acento-contraste' : 'bg-panel hover:bg-[var(--mind-variante)]'}`}
+                    className={`flex cursor-pointer flex-col rounded-2xl px-4 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${idSesion === sesion.id ? 'bg-acento text-acento-contraste' : 'bg-panel hover:bg-[var(--mind-variante)]'}`}
                   >
                     <span className="truncate font-medium">{sesion.titulo}</span>
                     <span className={`text-sm ${idSesion === sesion.id ? 'opacity-70' : 'text-texto-tenue'}`}>
                       {sesion.ponente || 'Sin ponente'} · {sesion.horaInicio === null ? 'sin hora' : `${fecha(sesion.fecha)}, ${sesion.horaInicio}`}
-                      {sesion.tieneTranscripcion ? ' · ya tiene grabación' : ''}
+                      {sesion.estado === 'procesando' ? ' · transcribiéndose ahora' : sesion.tieneTranscripcion ? ' · ya tiene grabación' : ''}
                     </span>
                   </button>
                 ))}
@@ -259,29 +260,54 @@ export function AsistenteDeGrabacion({
 
       {paso === 'fotos' ? (
         <>
-          <Cabecera icono="add_photo_alternate" titulo="Fotos de la sesión" texto="Opcional. Se usan para agradecer en redes." />
-          <div className="grid w-full max-w-md grid-cols-4 gap-2">
-            {urlsDeFotos.map((url, indice) => (
-              <span key={url} className="group relative aspect-square overflow-hidden rounded-[14px] bg-panel">
-                <img src={url} alt="" className="size-full object-cover" />
-                <button
-                  type="button"
-                  aria-label="Quitar foto"
-                  onClick={() => setFotos(fotos.filter((_, otro) => otro !== indice))}
-                  className="absolute top-1 right-1 flex size-7 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100"
-                >
-                  <Icono nombre="close" className="text-base" />
-                </button>
-              </span>
-            ))}
+          <Cabecera icono="add_photo_alternate" titulo="Fotos de la sesión" texto="Opcional: del ponente o del público. Puedes saltarte este paso." />
+          {/*
+            Vacío, un solo recuadro grande donde soltar o elegir; con fotos, la
+            cuadrícula y un recuadro pequeño para añadir más. La cuadrícula
+            vacía con un "+" suelto parecía un formulario a medio cargar.
+          */}
+          {fotos.length === 0 ? (
             <button
               type="button"
               onClick={() => entradaFotos.current?.click()}
-              className="flex aspect-square cursor-pointer items-center justify-center rounded-[14px] border-2 border-dashed border-filete-fuerte text-texto-tenue transition-colors hover:bg-panel"
+              onDragOver={(evento) => evento.preventDefault()}
+              onDrop={(evento) => {
+                evento.preventDefault()
+                setFotos([...fotos, ...[...evento.dataTransfer.files].filter((uno) => uno.type.startsWith('image/'))])
+              }}
+              className="flex w-full max-w-md cursor-pointer flex-col items-center gap-2 rounded-[24px] bg-panel px-6 py-10 text-texto-tenue transition-colors hover:bg-[var(--mind-variante)]"
             >
-              <Icono nombre="add" className="text-2xl" />
+              <span className="flex size-14 items-center justify-center rounded-full bg-fondo shadow-[0_4px_12px_-6px_rgb(0_0_0/0.35)]">
+                <Icono nombre="photo_library" className="text-[28px] text-texto" />
+              </span>
+              <span className="text-base font-medium text-texto">Suelta las fotos aquí o elígelas</span>
+              <span className="text-sm">PNG, JPG o WebP</span>
             </button>
-          </div>
+          ) : (
+            <div className="grid w-full max-w-md grid-cols-4 gap-2">
+              {urlsDeFotos.map((url, indice) => (
+                <span key={url} className="relative aspect-square overflow-hidden rounded-[16px] bg-panel shadow-[0_0_0_1px_var(--bitacora-filete)]">
+                  <img src={url} alt="" className="size-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label="Quitar foto"
+                    onClick={() => setFotos(fotos.filter((_, otro) => otro !== indice))}
+                    className="absolute top-1.5 right-1.5 flex size-6 cursor-pointer items-center justify-center rounded-full bg-black/65 text-white transition-transform hover:scale-110"
+                  >
+                    <Icono nombre="close" className="text-sm" />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => entradaFotos.current?.click()}
+                aria-label="Añadir más fotos"
+                className="flex aspect-square cursor-pointer items-center justify-center rounded-[16px] bg-panel text-texto-tenue transition-colors hover:bg-[var(--mind-variante)]"
+              >
+                <Icono nombre="add_photo_alternate" className="text-2xl" />
+              </button>
+            </div>
+          )}
           <input
             ref={entradaFotos}
             type="file"
@@ -354,8 +380,8 @@ export function AsistenteDeGrabacion({
           <span className="text-[36px] leading-none font-semibold">Grabación subida</span>
           <p className="max-w-sm text-texto-tenue">
             {enDemostracion()
-              ? 'Modo demostración: el recorrido es el real, pero no se guardó nada.'
-              : 'La transcripción sigue en segundo plano; puedes cerrar esto.'}
+              ? 'Modo demostración: el recorrido es el real, pero no se guardó nada ni se va a transcribir. Apágalo en Ajustes para trabajar de verdad.'
+              : 'Ya se está transcribiendo. En Ponencias verás su avance en la fila de la sesión; puedes cerrar esto y seguir trabajando.'}
           </p>
           <BotonMind variante="tenue" onClick={alTerminar} className="w-full max-w-sm justify-center">
             Salir

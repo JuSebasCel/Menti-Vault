@@ -1449,33 +1449,6 @@
   animation: menti-dibuja 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-/*
-  La cara del logo. Quieto, parpadea cada pocos segundos —un cierre rápido,
-  no un fundido—; pensando, los ojos van de un lado a otro como quien lee.
-*/
-.menti-ojos {
-  transform-box: view-box;
-  transform-origin: 20px 16.4px;
-}
-
-.menti-quieto .menti-ojos {
-  animation: menti-parpadea 4.2s ease-in-out infinite;
-}
-
-.menti-pensando .menti-ojos {
-  animation: menti-lee 1.4s ease-in-out infinite;
-}
-
-@keyframes menti-parpadea {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95% { transform: scaleY(0.1); }
-}
-
-@keyframes menti-lee {
-  0%, 100% { transform: translateX(-1.6px); }
-  45%, 55% { transform: translateX(1.6px); }
-}
-
 .menti-destello {
   transform-box: fill-box;
   transform-origin: center;
@@ -1535,8 +1508,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .menti-pensando .menti-trazo,
-  .menti-quieto .menti-ojos,
-  .menti-pensando .menti-ojos,
   .menti-destello,
   .menti-brillo,
   .menti-halo,

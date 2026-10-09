@@ -79,6 +79,10 @@ export type Ponencia = {
   readonly eje: string
   /** Si ya hay grabación o transcripción: una sesión de la agenda puede no tenerla todavía. */
   readonly tieneTranscripcion: boolean
+  /** En qué va su grabación: sin subir o en cola, transcribiéndose, lista o con un fallo. */
+  readonly estado: 'en-cola' | 'procesando' | 'procesada' | 'fallida'
+  /** Si ya se le subió algo: una sesión en cola sin fuente es solo un hueco de la agenda. */
+  readonly tieneFuente: boolean
   /** Cuándo se creó la sesión: ordena la lista por las más recientes. */
   readonly cargadaEl: string
 }

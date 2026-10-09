@@ -1,4 +1,5 @@
 import { hayBackend, pedirAlBackend } from '@/shared/api/backend'
+import { mensajeDeError } from '@/shared/errors'
 import { fecha, minuto } from '../formato'
 import type { DatosDelEvento } from '../tipos'
 import type { Mensaje } from './conversacion'
@@ -15,8 +16,9 @@ import type { Fragmento, Respuesta } from './motor'
   devuelven los fragmentos numerados (F1, F2…); él los cita con esas marcas,
   y la interfaz enseña debajo justo los que citó, para escucharlos.
 
-  Si el backend no está o falla, devuelve null y el chat responde con el
-  motor sin modelo: Menti responde peor, pero no se queda callado.
+  Si el backend no está o falla, devuelve el motivo y el chat responde con
+  el motor sin modelo, diciendo por qué: Menti responde peor, pero no se
+  queda callado ni esconde que algo falló.
 */
 
 type MensajeDelModelo = {
@@ -59,9 +61,9 @@ export async function responderConAgente(
   datos: DatosDelEvento,
   historial: readonly Mensaje[],
   pregunta: string,
-): Promise<Respuesta | null> {
+): Promise<Respuesta | { fallo: string }> {
   if (!hayBackend()) {
-    return null
+    return { fallo: 'No hay un servidor configurado para el modelo de IA.' }
   }
   const mensajes: MensajeDelModelo[] = [...historialParaElModelo(historial), { role: 'user', content: pregunta }]
   const encontrados = new Map<string, Fragmento>()
@@ -74,7 +76,7 @@ export async function responderConAgente(
       mensajes,
     })
     if (!resultado.ok) {
-      return null
+      return { fallo: mensajeDeError(resultado.codigo) }
     }
     const { contenido, llamadas } = resultado.datos
     if (llamadas.length === 0 || ronda === RONDAS - 1) {
@@ -106,7 +108,7 @@ export async function responderConAgente(
       })
     }
   }
-  return null
+  return { fallo: 'El modelo no terminó de responder.' }
 }
 
 /* Debajo van los fragmentos que el modelo citó, en el orden en que los citó; las marcas salen del texto. */

@@ -80,6 +80,8 @@ function queLeFalta(sesion: Ponencia): string {
 /* La vista elegida se recuerda: volver a la agenda y encontrarla cambiada obliga a elegirla otra vez. */
 const CLAVE_DE_VISTA = 'menti-vista-de-agenda'
 
+const DIAS_POR_SEMANA = 7
+
 function vistaRecordada(): 'dias' | 'lista' {
   try {
     return window.localStorage.getItem(CLAVE_DE_VISTA) === 'lista' ? 'lista' : 'dias'
@@ -110,6 +112,15 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
   }
 
   const dias = useMemo(() => diasDelEvento(datos), [datos])
+  /*
+    Por días se ven siete como mucho, y las flechas pasan de semana: con un
+    evento de dos semanas la cuadrícula se partía en catorce columnas tan
+    angostas que no cabía ni el título de una sesión.
+  */
+  const semanas = Math.max(1, Math.ceil(dias.length / DIAS_POR_SEMANA))
+  const [semana, setSemana] = useState(0)
+  const semanaVisible = Math.min(semana, semanas - 1)
+  const diasDeLaSemana = dias.slice(semanaVisible * DIAS_POR_SEMANA, (semanaVisible + 1) * DIAS_POR_SEMANA)
   /* Sin hora, o con un fin anterior al inicio: no tiene un sitio en la cuadrícula y se avisa arriba para corregirla. */
   const conHoraValida = (ponencia: Ponencia): boolean =>
     ponencia.horaInicio !== null && ponencia.horaFin !== null && minutosEntre(ponencia.horaInicio, ponencia.horaFin) > 0
@@ -138,7 +149,40 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <EncabezadoDePagina titulo={dias.length === 0 ? 'Agenda' : `Agenda · ${fecha(dias[0] ?? null)} al ${fecha(dias.at(-1) ?? null)}`}>
+      <EncabezadoDePagina
+        titulo={
+          dias.length === 0
+            ? 'Agenda'
+            : vista === 'dias'
+              ? `Agenda · ${fecha(diasDeLaSemana[0] ?? null)} al ${fecha(diasDeLaSemana.at(-1) ?? null)}`
+              : `Agenda · ${fecha(dias[0] ?? null)} al ${fecha(dias.at(-1) ?? null)}`
+        }
+      >
+        {vista === 'dias' && semanas > 1 ? (
+          <span className="flex items-center gap-1 rounded-full bg-[var(--mind-neutro)] p-1">
+            <button
+              type="button"
+              aria-label="Semana anterior"
+              disabled={semanaVisible === 0}
+              onClick={() => setSemana(semanaVisible - 1)}
+              className="flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-fondo disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <Icono nombre="chevron_left" className="text-xl" />
+            </button>
+            <span className="px-1 text-sm font-medium whitespace-nowrap">
+              Semana {semanaVisible + 1} de {semanas}
+            </span>
+            <button
+              type="button"
+              aria-label="Semana siguiente"
+              disabled={semanaVisible === semanas - 1}
+              onClick={() => setSemana(semanaVisible + 1)}
+              className="flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-fondo disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <Icono nombre="chevron_right" className="text-xl" />
+            </button>
+          </span>
+        ) : null}
         {sinHora.length === 0 ? null : (
           <button
             ref={botonSinHora}
@@ -198,7 +242,7 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
       </EncabezadoDePagina>
 
       {vista === 'dias' ? (
-        <VistaPorDias dias={dias} sesiones={visibles} alAbrir={abrir} />
+        <VistaPorDias key={semanaVisible} dias={diasDeLaSemana} sesiones={visibles} alAbrir={abrir} />
       ) : (
         <VistaDeLista dias={dias} sesiones={visibles} alAbrir={abrir} />
       )}

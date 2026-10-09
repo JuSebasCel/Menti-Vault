@@ -69,7 +69,13 @@ export function ChatDeMenti({ datos, alCerrar }: { datos: DatosDelEvento; alCerr
       sin modelo. Una espera mínima: una respuesta instantánea parece
       copiada, no leída.
     */
-    const conModelo = async (): Promise<Respuesta> => (await responderConAgente(datos, historial, limpia)) ?? (await responder(datos, limpia))
+    const conModelo = async (): Promise<Respuesta> => {
+      const delAgente = await responderConAgente(datos, historial, limpia)
+      if (!('fallo' in delAgente)) {
+        return delAgente
+      }
+      return { ...(await responder(datos, limpia)), aviso: `Respondí sin el modelo de IA: ${delAgente.fallo}` }
+    }
     const [respuesta] = await Promise.all([conModelo(), new Promise((resolver) => window.setTimeout(resolver, 900))])
     completarRespuesta(id, respuesta)
   }
@@ -268,6 +274,12 @@ function RespuestaDeMenti({
 
   return (
     <>
+      {respuesta.aviso === undefined ? null : (
+        <span className="flex items-start gap-1.5 text-xs text-texto-tenue">
+          <Icono nombre="info" className="text-sm" />
+          {respuesta.aviso}
+        </span>
+      )}
       <p className="text-[15px] leading-relaxed whitespace-pre-line">
         {palabras.slice(0, visibles).join(' ')}
         {escrita ? null : <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-texto" />}

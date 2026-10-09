@@ -9,6 +9,8 @@ import { descargarPonencia } from '../descargarPonencia'
 import { Modal } from '@/shared/ui'
 import { carpetaDeFotosDeSesion, eliminarSesion, leerTranscripcion } from '../repositorio'
 import { useEvento } from '../useEvento'
+import { alTerminarUnaTarea, analizarEnSegundoPlano, useTareasEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
+import type { TareaEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { CampoDeBusqueda, Filtros, normalizarBusqueda } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
@@ -51,6 +53,26 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [busqueda, setBusqueda] = useState('')
   const [orden, setOrden] = useState<Orden>('recientes')
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
+  const { invalidar } = useEvento()
+  const tareas = useTareasEnSegundoPlano()
+
+  /*
+    Mientras algo se transcribe se vuelve a leer el evento cada pocos
+    segundos, para que la fila pase sola de "Transcribiendo…" a lista o a
+    fallida. Sin nada en curso no se pregunta: la lista no cambia sola.
+  */
+  const enCurso = datos.ponencias.some((ponencia) => ponencia.estado === 'procesando') || tareas.size > 0
+  useEffect(() => {
+    alTerminarUnaTarea(invalidar)
+    if (!enCurso) {
+      return () => alTerminarUnaTarea(null)
+    }
+    const intervalo = window.setInterval(invalidar, 8000)
+    return () => {
+      window.clearInterval(intervalo)
+      alTerminarUnaTarea(null)
+    }
+  }, [enCurso, invalidar])
   const subiendo = parametros.get('subir') === '1'
   const botonSubir = useRef<HTMLButtonElement>(null)
 
@@ -192,7 +214,8 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
                   <Estado {...MOMENTO[momentoDe(ponencia)]} />
                 </td>
                 <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                  {ponencia.tieneTranscripcion ? null : (
+                  <EstadoDeLaGrabacion ponencia={ponencia} tarea={tareas.get(ponencia.id)} />
+                  {ponencia.tieneTranscripcion || ponencia.tieneFuente || tareas.has(ponencia.id) ? null : (
                     <button
                       type="button"
                       onClick={() => {
@@ -247,6 +270,48 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
       </Modal>
     </div>
   )
+}
+
+/*
+  En qué va la grabación de una sesión, en su propia fila: antes, al subir un
+  audio no quedaba ninguna señal de que se estuviera transcribiendo, y el
+  botón de subir seguía ahí invitando a subirlo otra vez.
+*/
+function EstadoDeLaGrabacion({ ponencia, tarea }: { ponencia: Ponencia; tarea: TareaEnSegundoPlano | undefined }): ReactElement | null {
+  if (tarea?.fase === 'error' || (tarea === undefined && ponencia.estado === 'fallida')) {
+    return (
+      <span className="mr-1 inline-flex items-center gap-2" title={tarea?.fase === 'error' ? tarea.mensaje : undefined}>
+        <span className="rounded-full bg-[var(--tono-rojo)] px-2.5 py-1 text-xs font-medium [color:var(--tono-rojo-texto)]">No se pudo transcribir</span>
+        <button
+          type="button"
+          onClick={() => void analizarEnSegundoPlano(ponencia.id)}
+          className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-[var(--mind-neutro)] px-3 font-medium transition-colors hover:bg-[var(--mind-variante)]"
+        >
+          <Icono nombre="refresh" className="text-base" /> Reintentar
+        </button>
+      </span>
+    )
+  }
+  if (tarea !== undefined || ponencia.estado === 'procesando') {
+    return (
+      <span className="mr-1 inline-flex h-9 items-center gap-2 rounded-full bg-[var(--tono-azul)] px-3 text-xs font-medium [color:var(--tono-azul-texto)]">
+        <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        {tarea?.fase === 'subiendo' ? 'Subiendo…' : 'Transcribiendo…'}
+      </span>
+    )
+  }
+  if (ponencia.estado === 'en-cola' && ponencia.tieneFuente) {
+    return (
+      <button
+        type="button"
+        onClick={() => void analizarEnSegundoPlano(ponencia.id)}
+        className="mr-1 inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-acento px-3 font-medium text-acento-contraste transition-opacity hover:opacity-85"
+      >
+        <Icono nombre="graphic_eq" className="text-base" /> Transcribir
+      </button>
+    )
+  }
+  return null
 }
 
 type Pestana = 'transcripcion' | 'material' | 'memoria' | 'autorizacion'

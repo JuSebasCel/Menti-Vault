@@ -39,6 +39,8 @@ export type Respuesta = {
   /** Sesiones a las que la respuesta remite, para abrirlas. */
   readonly sesiones: readonly { readonly id: string; readonly titulo: string; readonly detalle: string }[]
   readonly puntos?: readonly string[]
+  /** Por qué respondió sin el modelo, si fue así: sin esto, un fallo de la clave parecía un Menti torpe. */
+  readonly aviso?: string
 }
 
 const VACIAS = new Set(
@@ -255,6 +257,10 @@ const CONVERSACION: readonly { patron: RegExp; responder: (datos: DatosDelEvento
     patron: /\b(com+o me llamo|cual es mi nombre|sabes mi nombre|recuerdas mi nombre|como me dicen)\b/,
     responder: () =>
       nombreDeLaPersona === null ? 'Todavía no me lo has dicho. ¿Cómo te llamas?' : `Te llamas ${nombreDeLaPersona}. ¿Seguimos con el evento?`,
+  },
+  {
+    patron: /\b(como te llamas|cual es tu nombre|tu nombre|quien te (hizo|creo))\b/,
+    responder: (datos) => `Me llamo Menti. Soy el asistente de ${datos.evento.nombre} en Menti Vault: conozco lo que se dijo en sus ponencias.`,
   },
   {
     patron: /\b(que haces|quien eres|que eres|que puedes|que sabes|para que sirves|como funcionas|en que (me )?ayudas|ayuda|que te puedo preguntar)\b/,
@@ -528,9 +534,28 @@ export async function responder(datos: DatosDelEvento, pregunta: string): Promis
   }
 
   /* Cualquier otra cosa: buscar en lo que se dijo, en las ponencias de quien se nombró o de las que se venía hablando. */
+  /*
+    Una pregunta por el evento en conjunto ("¿qué opinas de lo que se dijo
+    en REDUCATE?", "¿de qué trató el evento?"): la memoria general lo
+    responde mejor que cualquier fragmento suelto.
+  */
+  const general = datos.memorias.find((memoria) => memoria.alcance === 'evento' && memoria.resumen !== '')
+  if (
+    general !== undefined &&
+    alcance === null &&
+    /\b(que opinas|que piensas|tu opinion|en general|el evento|lo que se (ha )?dicho|de que (trato|se trato|va)|resumen del|conclusiones)\b/.test(normal)
+  ) {
+    return {
+      texto: `En conjunto, ${datos.evento.nombre} dejó esto: ${general.resumen}`,
+      puntos: general.conclusiones,
+      fragmentos: [],
+      sesiones: [],
+    }
+  }
+
   if (grupos.length === 0 && alcance === null) {
     return {
-      texto: 'No estoy seguro de qué buscar. Pregúntame por un tema ("¿qué ponencias hablaron de IA?"), un ponente o un día del evento.',
+      texto: `Cuéntame un poco más. Puedo hablarte de un tema ("¿qué ponencias hablaron de IA?"), de un ponente o de un día de ${datos.evento.nombre}.`,
       fragmentos: [],
       sesiones: [],
     }
@@ -538,7 +563,7 @@ export async function responder(datos: DatosDelEvento, pregunta: string): Promis
   const fragmentos = grupos.length > 0 ? await buscar(datos, grupos, alcance, 4) : []
   if (fragmentos.length === 0) {
     return {
-      texto: 'No encontré eso en las transcripciones. Prueba con otras palabras, o pregúntame por un ponente o un tema.',
+      texto: `De eso no se habló en las ponencias de ${datos.evento.nombre}, o al menos no con esas palabras. Si me lo dices de otra forma, lo busco de nuevo.`,
       fragmentos: [],
       sesiones: [],
     }
