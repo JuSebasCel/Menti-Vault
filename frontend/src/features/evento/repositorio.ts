@@ -642,6 +642,21 @@ export async function crearPublicacion(
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
 
+/*
+  Mover una pieza de redes por su flujo (por revisar → lista → publicada).
+  Es de verdad incluso en demostración, como editar: la demostración solo
+  evita que se creen cosas nuevas.
+*/
+export async function cambiarEstadoDePublicacion(id: string, estado: Publicacion['estado']): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('publicaciones').update({ estado }).eq('id', id)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+export async function eliminarPublicacion(id: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('publicaciones').delete().eq('id', id)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
 /* Quitar una sesión de la agenda, con todo lo que cuelga de ella. Es de verdad incluso en demostración: borrar es una decisión explícita. */
 export async function eliminarSesion(idConferencia: string): Promise<ResultadoDeConsulta<null>> {
   const { error } = await supabase.from('conferencias').delete().eq('id', idConferencia)

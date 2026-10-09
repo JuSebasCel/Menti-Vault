@@ -5,23 +5,25 @@ import { useSession } from '@/features/auth/session'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { CONSENTIMIENTO, ESTADO_DE_PUBLICACION, RED, autorizanTodos, fecha, fechaYHora, mismoPonente } from '../formato'
-import { crearPublicacion } from '../repositorio'
+import { CONSENTIMIENTO, RED, autorizanTodos, fechaYHora, mismoPonente } from '../formato'
+import { cambiarEstadoDePublicacion, crearPublicacion, eliminarPublicacion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Publicacion } from '../tipos'
 
 /*
-  Lo que sale en las redes del evento.
+  Lo que sale en las redes del evento, ordenado por lo que hay que hacer con
+  cada pieza y no por fechas.
 
-  Arriba, publicaciones recomendadas armadas con el material que hay: el
-  primer día, el agradecimiento a los ponentes, y una por sesión con una
-  cita del ponente ya verificada en los artículos. Abajo, las piezas ya
-  preparadas, por día.
+  Arriba, ideas para publicar armadas con el material que hay: el primer
+  día, el agradecimiento a los ponentes y una por sesión con una cita ya
+  verificada en los artículos. Debajo, un tablero de tres columnas —por
+  revisar, listas para publicar, publicadas—, y cada pieza avanza con un
+  botón. La versión anterior agrupaba por día de publicación: mezclaba
+  piezas sin fecha con programadas y no decía qué faltaba hacer con ninguna.
 
   Todo respeta la autorización: de quien no autorizó difundir en redes, o
   todavía no respondió, no se propone nada ni se le nombra. Quiénes son se
-  consulta desde el encabezado, no en una franja fija: es una nota de
-  trabajo, no lo primero que hay que leer.
+  consulta desde el encabezado.
 */
 export function PantallaPublicaciones(): ReactElement {
   return <CargaDelEvento>{(datos) => <Redes datos={datos} />}</CargaDelEvento>
@@ -44,7 +46,6 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const { usuario } = useSession()
   const { invalidar } = useEvento()
   const [red, setRed] = useState('todas')
-  const [estado, setEstado] = useState('todos')
   const idDueno = usuario?.id ?? ''
   const [viendoPermisos, setViendoPermisos] = useState(false)
   const botonPermisos = useRef<HTMLButtonElement>(null)
@@ -107,17 +108,22 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
     return lista
   }, [datos, conRedes])
 
-  const visibles = datos.publicaciones.filter(
-    (publicacion) => (red === 'todas' || publicacion.red === red) && (estado === 'todos' || publicacion.estado === estado),
-  )
-  const porDia = useMemo(() => {
-    const dias = new Map<string, Publicacion[]>()
-    for (const publicacion of visibles) {
-      const dia = publicacion.programadaPara?.slice(0, 10) ?? 'sin-fecha'
-      dias.set(dia, [...(dias.get(dia) ?? []), publicacion])
+  const visibles = datos.publicaciones.filter((publicacion) => red === 'todas' || publicacion.red === red)
+  /* Las ideas que ya se añadieron no se vuelven a ofrecer. */
+  const ideas = recomendadas.filter((idea) => !datos.publicaciones.some((publicacion) => publicacion.texto === idea.texto))
+
+  const mover = async (publicacion: Publicacion, estado: Publicacion['estado']): Promise<void> => {
+    const resultado = await cambiarEstadoDePublicacion(publicacion.id, estado)
+    if (resultado.ok) {
+      invalidar()
     }
-    return [...dias.entries()]
-  }, [visibles])
+  }
+  const quitar = async (publicacion: Publicacion): Promise<void> => {
+    const resultado = await eliminarPublicacion(publicacion.id)
+    if (resultado.ok) {
+      invalidar()
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -145,21 +151,6 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
               opciones: [
                 { valor: 'todas', etiqueta: 'Todas' },
                 ...(['linkedin', 'instagram', 'x'] as const).map((una) => ({ valor: una, etiqueta: RED[una].etiqueta })),
-              ],
-            },
-            {
-              clave: 'estado',
-              rotulo: 'Estado',
-              icono: 'event_available',
-              valor: estado,
-              porDefecto: 'todos',
-              alCambiar: setEstado,
-              opciones: [
-                { valor: 'todos', etiqueta: 'Todos' },
-                ...(['propuesta', 'aprobada', 'programada', 'publicada'] as const).map((uno) => ({
-                  valor: uno,
-                  etiqueta: ESTADO_DE_PUBLICACION[uno].etiqueta,
-                })),
               ],
             },
           ]}
@@ -190,47 +181,98 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
         </div>
       </Modal>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="px-1 text-2xl font-medium">Recomendadas</h2>
-        <div className="entrar-escalonado grid grid-cols-2 gap-2">
-          {recomendadas.map((recomendada) => (
-            <TarjetaRecomendada
-              key={recomendada.id}
-              recomendada={recomendada}
-              alAnadir={async () => {
-                const resultado = await crearPublicacion(idDueno, datos.evento.nombre, {
-                  red: 'instagram',
-                  formato: recomendada.cita === '' ? 'anuncio' : 'cita',
-                  texto: recomendada.texto,
-                  cita: recomendada.cita,
-                  ponente: recomendada.ponente,
-                  idConferencia: recomendada.idConferencia,
-                })
-                if (resultado.ok) {
-                  invalidar()
-                }
-                return resultado.ok
-              }}
-            />
-          ))}
-        </div>
-      </section>
+      {ideas.length === 0 ? null : (
+        <section className="flex flex-col gap-2">
+          <h2 className="flex items-center gap-2 px-1 text-2xl font-medium">
+            <Icono nombre="auto_awesome" className="text-xl [color:var(--tono-violeta-texto)]" />
+            Ideas para publicar
+          </h2>
+          <ul className="entrar-escalonado flex snap-x gap-2 overflow-x-auto pb-1">
+            {ideas.map((idea) => (
+              <li key={idea.id} className="w-80 shrink-0 snap-start">
+                <TarjetaRecomendada
+                  recomendada={idea}
+                  alAnadir={async () => {
+                    const resultado = await crearPublicacion(idDueno, datos.evento.nombre, {
+                      red: 'instagram',
+                      formato: idea.cita === '' ? 'anuncio' : 'cita',
+                      texto: idea.texto,
+                      cita: idea.cita,
+                      ponente: idea.ponente,
+                      idConferencia: idea.idConferencia,
+                    })
+                    if (resultado.ok) {
+                      invalidar()
+                    }
+                    return resultado.ok
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <div className="entrar-escalonado flex flex-col gap-5">
-        {porDia.map(([dia, publicaciones]) => (
-          <section key={dia} className="flex flex-col gap-2">
-            <h2 className="px-1 text-2xl font-medium">{dia === 'sin-fecha' ? 'Sin programar' : fecha(dia)}</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {publicaciones.map((publicacion) => (
-                <Pieza key={publicacion.id} publicacion={publicacion} evento={datos.evento.nombre} />
-              ))}
-            </div>
-          </section>
-        ))}
+      <div className="entrar-escalonado grid grid-cols-3 items-start gap-2">
+        {COLUMNAS.map((columna) => {
+          const piezas = visibles.filter((publicacion) => columna.estados.includes(publicacion.estado))
+          const siguiente = columna.siguiente
+          return (
+            <section key={columna.titulo} className="tarjeta-borde flex min-h-48 flex-col gap-3 rounded-[24px] bg-fondo p-3">
+              <header className="flex items-center gap-2 px-2 pt-2">
+                <Icono nombre={columna.icono} className="text-xl" />
+                <span className="flex-1 text-lg font-medium">{columna.titulo}</span>
+                <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-panel px-2 text-xs font-semibold">{piezas.length}</span>
+              </header>
+              {piezas.length === 0 ? (
+                <p className="px-2 pb-2 text-sm text-texto-tenue">{columna.vacio}</p>
+              ) : (
+                piezas.map((publicacion) => (
+                  <Pieza
+                    key={publicacion.id}
+                    publicacion={publicacion}
+                    evento={datos.evento.nombre}
+                    alAvanzar={siguiente === null ? null : () => void mover(publicacion, siguiente)}
+                    textoDeAvance={columna.accion}
+                    alQuitar={() => void quitar(publicacion)}
+                  />
+                ))
+              )}
+            </section>
+          )
+        })}
       </div>
     </div>
   )
 }
+
+/* Las tres etapas de una pieza. "Programada" cuenta como lista: ya no hay nada que revisar, solo esperar su hora. */
+const COLUMNAS: readonly {
+  titulo: string
+  icono: string
+  estados: readonly Publicacion['estado'][]
+  siguiente: Publicacion['estado'] | null
+  accion: string
+  vacio: string
+}[] = [
+  {
+    titulo: 'Por revisar',
+    icono: 'rate_review',
+    estados: ['propuesta'],
+    siguiente: 'aprobada',
+    accion: 'Aprobar',
+    vacio: 'Añade una idea de arriba para empezar.',
+  },
+  {
+    titulo: 'Listas para publicar',
+    icono: 'task_alt',
+    estados: ['aprobada', 'programada'],
+    siguiente: 'publicada',
+    accion: 'Marcar como publicada',
+    vacio: 'Lo que apruebes aparece aquí.',
+  },
+  { titulo: 'Publicadas', icono: 'campaign', estados: ['publicada'], siguiente: null, accion: '', vacio: 'Todavía no se ha publicado nada.' },
+]
 
 function TarjetaRecomendada({
   recomendada,
@@ -239,40 +281,23 @@ function TarjetaRecomendada({
   recomendada: Recomendada
   alAnadir: () => Promise<boolean>
 }): ReactElement {
-  const [anadida, setAnadida] = useState(false)
-  const [copiado, setCopiado] = useState(false)
+  const [anadiendo, setAnadiendo] = useState(false)
   return (
-    <Tarjeta className="flex gap-4 p-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="flex items-center gap-2">
-          <Icono nombre="auto_awesome" className="text-base [color:var(--tono-violeta-texto)]" />
-          <span className="truncate text-[15px] font-semibold">{recomendada.titulo}</span>
-        </span>
-        <p className="line-clamp-3 text-sm leading-relaxed text-texto-tenue">{recomendada.texto}</p>
-        <span className="mt-auto flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              void navigator.clipboard?.writeText(recomendada.texto)
-              setCopiado(true)
-              window.setTimeout(() => setCopiado(false), 1600)
-            }}
-            className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--mind-neutro)] px-3 text-xs font-medium"
-          >
-            <Icono nombre={copiado ? 'check' : 'content_copy'} className="text-base" />
-            {copiado ? 'Copiado' : 'Copiar texto'}
-          </button>
-          <button
-            type="button"
-            disabled={anadida}
-            onClick={() => void alAnadir().then(setAnadida)}
-            className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-acento px-3 text-xs font-medium text-acento-contraste disabled:opacity-40"
-          >
-            <Icono nombre={anadida ? 'check' : 'add'} className="text-base" />
-            {anadida ? 'Añadida' : 'Añadir a las piezas'}
-          </button>
-        </span>
-      </div>
+    <Tarjeta className="flex h-full flex-col gap-2 p-4">
+      <span className="truncate text-[15px] font-semibold">{recomendada.titulo}</span>
+      <p className="line-clamp-3 text-sm leading-relaxed text-texto-tenue">{recomendada.texto}</p>
+      <button
+        type="button"
+        disabled={anadiendo}
+        onClick={() => {
+          setAnadiendo(true)
+          void alAnadir().finally(() => setAnadiendo(false))
+        }}
+        className="mt-auto flex h-8 w-fit cursor-pointer items-center gap-1.5 rounded-full bg-acento px-3 text-xs font-medium text-acento-contraste disabled:opacity-40"
+      >
+        <Icono nombre="add" className="text-base" />
+        {anadiendo ? 'Añadiendo…' : 'Añadir a por revisar'}
+      </button>
     </Tarjeta>
   )
 }
@@ -344,58 +369,70 @@ async function descargarTarjeta(publicacion: Publicacion, evento: string): Promi
 function Pieza({
   publicacion,
   evento,
+  alAvanzar,
+  textoDeAvance,
+  alQuitar,
 }: {
   publicacion: Publicacion
   evento: string
+  alAvanzar: (() => void) | null
+  textoDeAvance: string
+  alQuitar: () => void
 }): ReactElement {
   const [copiado, setCopiado] = useState(false)
   const boton =
-    'flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--mind-neutro)] px-3 text-xs font-medium transition-colors hover:bg-[var(--mind-variante)]'
+    'flex size-8 cursor-pointer items-center justify-center rounded-full bg-[var(--mind-neutro)] transition-colors hover:bg-[var(--mind-variante)]'
 
   return (
-    <Tarjeta className="flex gap-5 p-5">
-      <div className="flex aspect-square w-44 shrink-0 flex-col justify-between rounded-[20px] bg-black p-5 text-white">
-        <span className="text-[10px] tracking-wide uppercase opacity-60">{evento}</span>
-        <span className="line-clamp-6 text-[14px] leading-snug font-semibold">
-          {publicacion.cita === '' ? publicacion.texto.split('.')[0] : `“${publicacion.cita}”`}
-        </span>
-        <span className="truncate text-xs opacity-75">{publicacion.ponente || evento}</span>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
-            <Icono nombre={RED[publicacion.red].icono} className="text-lg" />
+    <article className="flex flex-col gap-3 rounded-[18px] bg-panel p-3">
+      <div className="flex items-start gap-3">
+        <div className="flex aspect-square w-16 shrink-0 items-center justify-center rounded-[12px] bg-black p-2 text-center text-[8px] leading-tight font-semibold text-white">
+          <span className="line-clamp-5">{publicacion.cita === '' ? publicacion.texto.split('.')[0] : `“${publicacion.cita}”`}</span>
+        </div>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            <Icono nombre={RED[publicacion.red].icono} className="text-base" />
             {RED[publicacion.red].etiqueta}
-            <span className="truncate font-normal text-texto-tenue">
-              · {fechaYHora(publicacion.programadaPara)}
-            </span>
           </span>
-          <Estado {...ESTADO_DE_PUBLICACION[publicacion.estado]} />
-        </div>
-        <p className="line-clamp-6 text-[15px] leading-relaxed">{publicacion.texto}</p>
-        <div className="mt-auto flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={boton}
-            onClick={() => {
-              void navigator.clipboard?.writeText(publicacion.texto)
-              setCopiado(true)
-              window.setTimeout(() => setCopiado(false), 1600)
-            }}
-          >
-            <Icono nombre={copiado ? 'check' : 'content_copy'} className="text-base" />
-            {copiado ? 'Copiado' : 'Copiar texto'}
-          </button>
-          <button
-            type="button"
-            className={boton}
-            onClick={() => void descargarTarjeta(publicacion, evento)}
-          >
-            <Icono nombre="download" className="text-base" />
-            Descargar imagen
-          </button>
-        </div>
+          <span className="truncate text-xs text-texto-tenue">{publicacion.ponente || evento}</span>
+          {publicacion.estado === 'programada' && publicacion.programadaPara !== null ? (
+            <span className="flex items-center gap-1 text-xs text-texto-tenue">
+              <Icono nombre="schedule" relleno={false} className="text-sm" /> {fechaYHora(publicacion.programadaPara)}
+            </span>
+          ) : null}
+        </span>
       </div>
-    </Tarjeta>
+      <p className="line-clamp-4 text-sm leading-relaxed">{publicacion.texto}</p>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          title={copiado ? 'Copiado' : 'Copiar texto'}
+          aria-label="Copiar texto"
+          className={boton}
+          onClick={() => {
+            void navigator.clipboard?.writeText(publicacion.texto)
+            setCopiado(true)
+            window.setTimeout(() => setCopiado(false), 1600)
+          }}
+        >
+          <Icono nombre={copiado ? 'check' : 'content_copy'} className="text-base" />
+        </button>
+        <button type="button" title="Descargar imagen" aria-label="Descargar imagen" className={boton} onClick={() => void descargarTarjeta(publicacion, evento)}>
+          <Icono nombre="download" className="text-base" />
+        </button>
+        <button type="button" title="Quitar" aria-label="Quitar la pieza" className={boton} onClick={alQuitar}>
+          <Icono nombre="delete" className="text-base" />
+        </button>
+        {alAvanzar === null ? null : (
+          <button
+            type="button"
+            onClick={alAvanzar}
+            className="ml-auto flex h-8 cursor-pointer items-center gap-1 rounded-full bg-acento px-3 text-xs font-medium text-acento-contraste transition-opacity hover:opacity-85"
+          >
+            {textoDeAvance} <Icono nombre="arrow_forward" className="text-sm" />
+          </button>
+        )}
+      </div>
+    </article>
   )
 }
