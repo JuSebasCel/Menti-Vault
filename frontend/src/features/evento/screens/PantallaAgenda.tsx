@@ -415,11 +415,22 @@ function VistaPorDias({
                   <button
                     type="button"
                     onClick={(evento) => alAbrir(sesion, evento.currentTarget)}
-                    className="tarjeta-borde flex size-full cursor-pointer items-start overflow-hidden rounded-[14px] bg-fondo px-3 py-1.5 text-left text-texto transition-transform hover:scale-[1.02]"
+                    className={`tarjeta-borde flex size-full min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-[14px] bg-fondo py-1.5 text-left text-texto transition-transform hover:scale-[1.02] ${lugar.columnas > 1 ? 'px-2' : 'px-3'}`}
                   >
-                    <span className="truncate text-[13px] leading-5 font-medium">
+                    {/*
+                      El título se parte en las líneas que caben en el bloque y
+                      se corta con puntos suspensivos: en una columna partida por
+                      un solape, una sola línea con "truncate" se salía de la
+                      tarjeta porque el texto no tenía ancho mínimo.
+                    */}
+                    <span className="w-full min-w-0 text-[13px] leading-5 font-medium break-words">
                       <span className="mr-1.5 font-mono text-texto-tenue">{sesion.horaInicio}</span>
-                      {sesion.titulo}
+                      <span
+                        className="overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical]"
+                        style={{ WebkitLineClamp: Math.max(1, Math.floor((alto - 12) / 20) - 1) }}
+                      >
+                        {sesion.titulo}
+                      </span>
                     </span>
                   </button>
 

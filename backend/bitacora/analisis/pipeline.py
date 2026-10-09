@@ -99,6 +99,12 @@ def _tema_de_respaldo(conferencia: Conferencia, temas: Sequence[Tema]) -> str:
     return temas[0].id if temas else ""
 
 
+def _es_de_la_clave(fallo: BaseException) -> bool:
+    return any(
+        clase.__name__ in {"AuthenticationError", "PermissionDeniedError"} for clase in type(fallo).__mro__
+    )
+
+
 def _analizar_ventanas(
     conferencia: Conferencia,
     ventanas: Sequence[Ventana],
@@ -116,13 +122,25 @@ def _analizar_ventanas(
     propuestas: list[PropuestaDeTema] = []
 
     for ventana in ventanas:
-        crudas = analizar(
-            conferencia.titulo,
-            conferencia.ponente,
-            conferencia.evento,
-            temas,
-            renderizar_ventana(ventana),
-        )
+        try:
+            crudas = analizar(
+                conferencia.titulo,
+                conferencia.ponente,
+                conferencia.evento,
+                temas,
+                renderizar_ventana(ventana),
+            )
+        except Exception as fallo:  # noqa: BLE001
+            # Una ventana que ningún modelo pudo devolver en JSON válido no
+            # tumba la charla entera: se pierden las fichas de ese tramo, no
+            # las de los otros cuarenta minutos ni la transcripción ya hecha.
+            # Una clave rechazada sí se propaga: fallaría igual en todas.
+            if _es_de_la_clave(fallo):
+                raise
+            registro.warning(
+                "ventana sin analizar conferencia=%s fallo=%s", conferencia.id, type(fallo).__name__
+            )
+            continue
         resultado = validar_propuestas(crudas, ventana, contexto)
         fichas.extend(resultado.fichas)
         propuestas.extend(resultado.temas_propuestos)

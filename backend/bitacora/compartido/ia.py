@@ -91,6 +91,12 @@ def _pasa_al_respaldo(fallo: BaseException) -> bool:
     """
     if getattr(fallo, "status_code", None) == 413:
         return True
+    # Groq rechaza con 400 `json_validate_failed` la respuesta de un modelo
+    # que no cerró el JSON pedido (suele quedarse corto de tokens tras
+    # razonar). No es una petición mal formada: otro modelo de la cadena
+    # puede devolverlo bien.
+    if getattr(fallo, "status_code", None) == 400 and "json_validate_failed" in str(fallo):
+        return True
     return any(clase.__name__ in _FALLOS_QUE_PASAN_AL_RESPALDO for clase in type(fallo).__mro__)
 
 
