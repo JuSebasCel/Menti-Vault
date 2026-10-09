@@ -40,6 +40,8 @@ export type Evento = {
   readonly formatoDeMemoria: string | null
   /** Reglas en lenguaje natural que acompañan al formato al redactar. */
   readonly indicacionesDeMemoria: string
+  /** Formatos de sesión que el evento añadió a los cinco de siempre. */
+  readonly formatosDeSesion: readonly string[]
 }
 
 export type ResumenDeEvento = { readonly id: string; readonly nombre: string; readonly ponencias: number }
@@ -87,7 +89,8 @@ export type Ponencia = {
   readonly creadaEl: string
 }
 
-export type TipoDeSesion = 'conferencia' | 'taller' | 'panel' | 'apertura' | 'cierre'
+/* Los cinco de siempre o un formato propio del evento ("Panel de expertos"), guardado con su nombre tal cual. */
+export type TipoDeSesion = string
 
 export type Memoria = {
   readonly id: string

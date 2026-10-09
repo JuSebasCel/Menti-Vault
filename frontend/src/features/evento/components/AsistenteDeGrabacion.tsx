@@ -162,6 +162,17 @@ export function AsistenteDeGrabacion({
 
   return (
     <div key={paso} className="entrar-escalonado flex flex-col items-center gap-6 px-6 pt-2 pb-4 text-center">
+      {/*
+        Dicho antes de empezar, no al final: con la demostración encendida se
+        recorría todo el asistente, no se guardaba nada, y la transcripción
+        "no llegaba" sin que nada explicara por qué.
+      */}
+      {enDemostracion() && paso !== 'hecho' ? (
+        <p className="flex w-full max-w-md items-center gap-2 rounded-2xl bg-[var(--tono-ambar)] px-4 py-3 text-left text-sm [color:var(--tono-ambar-texto)]">
+          <Icono nombre="slideshow" className="text-lg" />
+          Modo demostración: este recorrido no sube nada ni transcribe. Apágalo en Ajustes para trabajar de verdad.
+        </p>
+      ) : null}
       {paso === 'sesion' ? (
         <>
           <Cabecera icono="event" titulo="¿De qué sesión es?" texto="Elige la sesión de la agenda o créala si no estaba." />

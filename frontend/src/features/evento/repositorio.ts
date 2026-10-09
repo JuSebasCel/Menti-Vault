@@ -54,6 +54,9 @@ function mapearEvento(fila: Fila): Evento {
     fechaFin: textoONulo(fila['fecha_fin']),
     ejes: Array.isArray(fila['ejes']) ? (fila['ejes'] as unknown[]).filter((eje): eje is string => typeof eje === 'string') : [],
     formatoDeMemoria: textoONulo(fila['formato_de_memoria']),
+    formatosDeSesion: Array.isArray(fila['formatos_de_sesion'])
+      ? (fila['formatos_de_sesion'] as unknown[]).filter((formato): formato is string => typeof formato === 'string')
+      : [],
     indicacionesDeMemoria: texto(fila['indicaciones_de_memoria']),
   }
 }
@@ -410,6 +413,7 @@ export type CambiosDeEvento = {
   readonly fechaFin: string
   readonly ejes: readonly string[]
   readonly indicacionesDeMemoria: string
+  readonly formatosDeSesion: readonly string[]
 }
 
 export async function actualizarEvento(idEvento: string, cambios: Partial<CambiosDeEvento>): Promise<ResultadoDeConsulta<null>> {
@@ -420,6 +424,7 @@ export async function actualizarEvento(idEvento: string, cambios: Partial<Cambio
   if (cambios.fechaFin !== undefined) fila['fecha_fin'] = cambios.fechaFin || null
   if (cambios.ejes !== undefined) fila['ejes'] = cambios.ejes
   if (cambios.indicacionesDeMemoria !== undefined) fila['indicaciones_de_memoria'] = cambios.indicacionesDeMemoria
+  if (cambios.formatosDeSesion !== undefined) fila['formatos_de_sesion'] = cambios.formatosDeSesion
 
   const { error } = await supabase.from('eventos').update(fila).eq('id', idEvento)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }

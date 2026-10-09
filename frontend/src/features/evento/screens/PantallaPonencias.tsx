@@ -185,17 +185,6 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
         </BotonMind>
       </EncabezadoDePagina>
 
-      {transcribiendo.length === 0 ? null : (
-        <div className="entrar-escalonado flex items-center gap-3 rounded-[20px] bg-[var(--tono-azul)] px-5 py-3 [color:var(--tono-azul-texto)]">
-          <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          <span className="text-sm">
-            {transcribiendo.length === 1
-              ? `Transcribiendo «${transcribiendo[0]?.titulo ?? ''}».`
-              : `Transcribiendo ${transcribiendo.length} grabaciones.`}{' '}
-            Una charla de una hora tarda unos minutos; la lista se actualiza sola y puedes seguir trabajando.
-          </span>
-        </div>
-      )}
 
       <div className="entrar-escalonado grid grid-cols-4 gap-2">
         <Tarjeta variante="rellena">

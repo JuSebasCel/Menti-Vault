@@ -10,7 +10,7 @@ import { PanelLateral } from '../components/PanelLateral'
 import { SelectorDeHora } from '../components/SelectorDeHora'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono } from '../components/piezas'
 import { MOMENTO, fecha, minutosEntre, momentoDe, sumarMinutos } from '../formato'
-import { actualizarSesion, crearPonenteInvitado, crearSesion, eliminarSesion } from '../repositorio'
+import { actualizarEvento, actualizarSesion, crearPonenteInvitado, crearSesion, eliminarSesion } from '../repositorio'
 import { SelectorDePonente, ponentesNuevos } from '../components/SelectorDePonente'
 import type { CambiosDeSesion } from '../repositorio'
 import { useEvento } from '../useEvento'
@@ -41,6 +41,16 @@ const TIPOS: readonly { valor: TipoDeSesion; etiqueta: string }[] = [
   { valor: 'cierre', etiqueta: 'Cierre' },
 ]
 const DURACIONES = [30, 45, 60, 90, 120] as const
+
+/* Los cinco de siempre más los que el evento añadió. */
+function tiposDelEvento(datos: DatosDelEvento): readonly { valor: TipoDeSesion; etiqueta: string }[] {
+  return [...TIPOS, ...datos.evento.formatosDeSesion.map((formato) => ({ valor: formato, etiqueta: formato }))]
+}
+
+/* Un formato propio se guarda con su nombre, así que si no es uno de los de siempre, su nombre es su etiqueta. */
+function etiquetaDeTipo(tipo: TipoDeSesion): string {
+  return TIPOS.find((uno) => uno.valor === tipo)?.etiqueta ?? tipo
+}
 
 function minutosDe(hora: string | null): number | null {
   if (hora === null) {
@@ -212,7 +222,7 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
               valor: tipo,
               porDefecto: 'todos',
               alCambiar: setTipo,
-              opciones: [{ valor: 'todos', etiqueta: 'Todos' }, ...TIPOS.map((uno) => ({ valor: uno.valor, etiqueta: uno.etiqueta }))],
+              opciones: [{ valor: 'todos', etiqueta: 'Todos' }, ...tiposDelEvento(datos).map((uno) => ({ valor: uno.valor, etiqueta: uno.etiqueta }))],
             },
           ]}
         />
@@ -425,7 +435,7 @@ function VistaPorDias({
                     <span className="text-sm">{sesion.ponente}</span>
                     <span className="flex flex-wrap gap-1.5">
                       <span className="rounded-full bg-[var(--mind-neutro)] px-2.5 py-1 text-xs">
-                        {TIPOS.find((uno) => uno.valor === sesion.tipo)?.etiqueta}
+                        {etiquetaDeTipo(sesion.tipo)}
                       </span>
                       {sesion.eje === '' ? null : <span className="rounded-full bg-[var(--mind-neutro)] px-2.5 py-1 text-xs">{sesion.eje}</span>}
                       <span className="rounded-full bg-[var(--mind-neutro)] px-2.5 py-1 text-xs">{sesion.sala || 'Sin espacio'}</span>
@@ -500,6 +510,70 @@ function VistaDeLista({
   bloques habituales en vez de escribir una hora de fin; "Otra" deja elegir
   el fin a mano para los casos raros.
 */
+/*
+  Añadir un formato propio desde el mismo formulario ("Panel de expertos"):
+  un chip que se abre en campo. Sin <form>: este vive dentro de otro, y un
+  formulario anidado dispararía el envío nativo y recargaría la página.
+*/
+function NuevoFormato({ alCrear }: { alCrear: (nombre: string) => Promise<void> }): ReactElement {
+  const [escribiendo, setEscribiendo] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const crear = async (): Promise<void> => {
+    const limpio = nombre.trim()
+    if (limpio === '') {
+      return
+    }
+    setGuardando(true)
+    await alCrear(limpio)
+    setGuardando(false)
+    setNombre('')
+    setEscribiendo(false)
+  }
+
+  if (!escribiendo) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEscribiendo(true)}
+        className="flex h-10 cursor-pointer items-center gap-1.5 rounded-full border-2 border-dashed border-filete-fuerte px-4 text-sm text-texto-tenue transition-colors hover:bg-panel"
+      >
+        <Icono nombre="add" className="text-base" /> Nuevo formato
+      </button>
+    )
+  }
+  return (
+    <span className="flex h-10 items-center gap-1 rounded-full bg-fondo pr-1 pl-4 shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)]">
+      <input
+        autoFocus
+        value={nombre}
+        placeholder="Panel de expertos"
+        onChange={(evento) => setNombre(evento.target.value)}
+        onKeyDown={(evento) => {
+          if (evento.key === 'Enter') {
+            evento.preventDefault()
+            void crear()
+          } else if (evento.key === 'Escape') {
+            evento.stopPropagation()
+            setEscribiendo(false)
+          }
+        }}
+        className="w-44 bg-transparent text-sm outline-none placeholder:text-texto-tenue"
+      />
+      <button
+        type="button"
+        disabled={guardando || nombre.trim() === ''}
+        onClick={() => void crear()}
+        aria-label="Añadir el formato"
+        className="flex size-8 cursor-pointer items-center justify-center rounded-full bg-acento text-acento-contraste disabled:opacity-40"
+      >
+        <Icono nombre="check" className="text-base" />
+      </button>
+    </span>
+  )
+}
+
 function FormularioDeSesion({
   datos,
   dias,
@@ -607,11 +681,25 @@ function FormularioDeSesion({
           <input value={cambios.titulo} onChange={(evento) => poner('titulo', evento.target.value)} className={campo} />
         </label>
         <div className="flex flex-wrap gap-2">
-          {TIPOS.map((uno) => (
+          {tiposDelEvento(datos).map((uno) => (
             <Chip key={uno.valor} elegido={cambios.tipo === uno.valor} onClick={() => poner('tipo', uno.valor)}>
               {uno.etiqueta}
             </Chip>
           ))}
+          <NuevoFormato
+            alCrear={async (nombre) => {
+              const existe = tiposDelEvento(datos).find((uno) => uno.etiqueta.toLowerCase() === nombre.toLowerCase())
+              if (existe !== undefined) {
+                poner('tipo', existe.valor)
+                return
+              }
+              const resultado = await actualizarEvento(datos.evento.id, { formatosDeSesion: [...datos.evento.formatosDeSesion, nombre] })
+              if (resultado.ok) {
+                invalidar()
+                poner('tipo', nombre)
+              }
+            }}
+          />
         </div>
       </Bloque>
 
