@@ -22,11 +22,18 @@ import type { Fragmento, Respuesta } from './motor'
   volver a abrir el panel, hasta pedir una nueva o recargar la página.
 */
 const SUGERENCIAS = [
+  '¿Qué ponencias hablaron de IA?',
   '¿Quién habló de ética?',
-  '¿Qué sesiones hubo el martes?',
   'Resume la ponencia de Héctor',
-  '¿Qué dijo Rafael sobre la equidad?',
+  '¿Qué sesiones hubo el martes?',
 ]
+
+/* La clase de afirmación, cuando se pidió comprobar: los datos van primero porque son lo que se contrasta. */
+const ETIQUETAS: Record<NonNullable<Fragmento['etiqueta']>, { texto: string; tono: string }> = {
+  dato: { texto: 'Dato', tono: 'bg-[var(--tono-azul)] [color:var(--tono-azul-texto)]' },
+  afirmacion: { texto: 'Afirmación', tono: 'bg-[var(--tono-gris)] [color:var(--tono-gris-texto)]' },
+  opinion: { texto: 'Opinión', tono: 'bg-[var(--tono-violeta)] [color:var(--tono-violeta-texto)]' },
+}
 
 const ESPERAS = ['Leyendo las transcripciones…', 'Buscando en lo que se dijo…', 'Comprobando los minutos…']
 
@@ -276,6 +283,11 @@ function RespuestaDeMenti({
         <ul className="entrar-escalonado flex flex-col gap-2">
           {respuesta.fragmentos.map((fragmento) => (
             <li key={`${fragmento.idConferencia}-${fragmento.segundo}`} className="flex flex-col gap-2 rounded-[18px] bg-panel p-3">
+              {fragmento.etiqueta === undefined ? null : (
+                <span className={`w-fit rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ETIQUETAS[fragmento.etiqueta].tono}`}>
+                  {ETIQUETAS[fragmento.etiqueta].texto}
+                </span>
+              )}
               <p className="line-clamp-4 text-[14px] leading-relaxed">«{fragmento.texto}»</p>
               <div className="flex items-center gap-2">
                 <span className="flex min-w-0 flex-1 flex-col">
@@ -284,6 +296,16 @@ function RespuestaDeMenti({
                   </span>
                   <span className="truncate text-xs text-texto-tenue">{fragmento.ponencia}</span>
                 </span>
+                {fragmento.contrastar === undefined ? null : (
+                  <a
+                    href={fragmento.contrastar}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-fondo px-3 text-xs font-medium transition-colors hover:bg-[var(--mind-variante)]"
+                  >
+                    <Icono nombre="travel_explore" className="text-base" /> Contrastar
+                  </a>
+                )}
                 <button
                   type="button"
                   aria-label="Escuchar"
@@ -330,7 +352,7 @@ function RespuestaDeMenti({
         <ReproductorDeCita
           key={sonando.evidencia.clave}
           evidencia={sonando.evidencia}
-          idDueno={datos.ponencias[0]?.idDueno ?? ''}
+          idDueno={datos.ponencias.find((ponencia) => ponencia.id === sonando.evidencia.idConferencia)?.idDueno ?? ''}
           ancla={sonando.ancla}
           alCerrar={() => setSonando(null)}
         />

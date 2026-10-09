@@ -1449,6 +1449,22 @@
   animation: menti-dibuja 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
+/* Las barras de voz del logo: al pensar suben y bajan desfasadas, como alguien que habla. */
+.menti-barra {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.menti-pensando .menti-barra {
+  animation: menti-habla 0.9s cubic-bezier(0.37, 0.35, 0, 1) infinite alternate;
+}
+
+@keyframes menti-habla {
+  0% { transform: scaleY(1); }
+  50% { transform: scaleY(0.45); }
+  100% { transform: scaleY(1.15); }
+}
+
 .menti-destello {
   transform-box: fill-box;
   transform-origin: center;
@@ -1508,6 +1524,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .menti-pensando .menti-trazo,
+  .menti-pensando .menti-barra,
   .menti-destello,
   .menti-brillo,
   .menti-halo,
