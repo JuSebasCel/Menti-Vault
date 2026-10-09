@@ -9,7 +9,7 @@ import { descargarPonencia } from '../descargarPonencia'
 import { Modal } from '@/shared/ui'
 import { carpetaDeFotosDeSesion, eliminarSesion, leerTranscripcion } from '../repositorio'
 import { useEvento } from '../useEvento'
-import { alTerminarUnaTarea, analizarEnSegundoPlano, useTareasEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
+import { alTerminarUnaTarea, analizarEnSegundoPlano, estadoParaMostrar, useTareasEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
 import type { TareaEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { CampoDeBusqueda, Filtros, normalizarBusqueda } from '../components/Filtros'
@@ -34,12 +34,15 @@ export function PantallaPonencias(): ReactElement {
 
 const DIA_CORTO = new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric' })
 
+/* Las grabaciones en cola que ya se mandaron a transcribir en esta visita. */
+const arrancadas = new Set<string>()
+
 type Orden = 'recientes' | 'antiguas' | 'agenda' | 'titulo'
 
 /* Por defecto, lo último que se agregó arriba: es lo que se acaba de crear y se quiere encontrar. */
 const ORDENES: Record<Orden, (una: Ponencia, otra: Ponencia) => number> = {
-  recientes: (una, otra) => otra.cargadaEl.localeCompare(una.cargadaEl),
-  antiguas: (una, otra) => una.cargadaEl.localeCompare(otra.cargadaEl),
+  recientes: (una, otra) => otra.creadaEl.localeCompare(una.creadaEl),
+  antiguas: (una, otra) => una.creadaEl.localeCompare(otra.creadaEl),
   agenda: (una, otra) => `${una.fecha} ${una.horaInicio ?? '99'}`.localeCompare(`${otra.fecha} ${otra.horaInicio ?? '99'}`),
   titulo: (una, otra) => una.titulo.localeCompare(otra.titulo, 'es'),
 }
@@ -61,7 +64,27 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
     segundos, para que la fila pase sola de "Transcribiendo…" a lista o a
     fallida. Sin nada en curso no se pregunta: la lista no cambia sola.
   */
-  const enCurso = datos.ponencias.some((ponencia) => ponencia.estado === 'procesando') || tareas.size > 0
+  const transcribiendo = datos.ponencias.filter(
+    (ponencia) =>
+      ponencia.estado === 'procesando' || (ponencia.estado === 'en-cola' && ponencia.tieneFuente) || estadoParaMostrar(ponencia, tareas.get(ponencia.id))?.fase === 'iniciando',
+  )
+  const enCurso = transcribiendo.length > 0
+
+  /*
+    Una grabación subida que se quedó en cola —la pestaña se cerró antes de
+    pedir el análisis, o el servidor dormía— se arranca sola al volver aquí.
+    Transcribir no es un paso que alguien tenga que acordarse de pedir: se
+    sube el audio y se transcribe. Una sola vez por visita, para no insistir
+    si el servidor la rechaza.
+  */
+  useEffect(() => {
+    for (const ponencia of datos.ponencias) {
+      if (ponencia.estado === 'en-cola' && ponencia.tieneFuente && !tareas.has(ponencia.id) && !arrancadas.has(ponencia.id)) {
+        arrancadas.add(ponencia.id)
+        void analizarEnSegundoPlano(ponencia.id)
+      }
+    }
+  }, [datos.ponencias, tareas])
   useEffect(() => {
     alTerminarUnaTarea(invalidar)
     if (!enCurso) {
@@ -161,6 +184,18 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
           Subir grabación
         </BotonMind>
       </EncabezadoDePagina>
+
+      {transcribiendo.length === 0 ? null : (
+        <div className="entrar-escalonado flex items-center gap-3 rounded-[20px] bg-[var(--tono-azul)] px-5 py-3 [color:var(--tono-azul-texto)]">
+          <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="text-sm">
+            {transcribiendo.length === 1
+              ? `Transcribiendo «${transcribiendo[0]?.titulo ?? ''}».`
+              : `Transcribiendo ${transcribiendo.length} grabaciones.`}{' '}
+            Una charla de una hora tarda unos minutos; la lista se actualiza sola y puedes seguir trabajando.
+          </span>
+        </div>
+      )}
 
       <div className="entrar-escalonado grid grid-cols-4 gap-2">
         <Tarjeta variante="rellena">
@@ -277,7 +312,9 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   audio no quedaba ninguna señal de que se estuviera transcribiendo, y el
   botón de subir seguía ahí invitando a subirlo otra vez.
 */
-function EstadoDeLaGrabacion({ ponencia, tarea }: { ponencia: Ponencia; tarea: TareaEnSegundoPlano | undefined }): ReactElement | null {
+function EstadoDeLaGrabacion({ ponencia, tarea: local }: { ponencia: Ponencia; tarea: TareaEnSegundoPlano | undefined }): ReactElement | null {
+  /* La tarea local manda solo mientras la base no haya avanzado ni fallado; si no, se queda colgada en "Transcribiendo…". */
+  const tarea = estadoParaMostrar(ponencia, local) ?? undefined
   if (tarea?.fase === 'error' || (tarea === undefined && ponencia.estado === 'fallida')) {
     return (
       <span className="mr-1 inline-flex items-center gap-2" title={tarea?.fase === 'error' ? tarea.mensaje : undefined}>
@@ -302,13 +339,10 @@ function EstadoDeLaGrabacion({ ponencia, tarea }: { ponencia: Ponencia; tarea: T
   }
   if (ponencia.estado === 'en-cola' && ponencia.tieneFuente) {
     return (
-      <button
-        type="button"
-        onClick={() => void analizarEnSegundoPlano(ponencia.id)}
-        className="mr-1 inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-acento px-3 font-medium text-acento-contraste transition-opacity hover:opacity-85"
-      >
-        <Icono nombre="graphic_eq" className="text-base" /> Transcribir
-      </button>
+      <span className="mr-1 inline-flex h-9 items-center gap-2 rounded-full bg-[var(--tono-azul)] px-3 text-xs font-medium [color:var(--tono-azul-texto)]">
+        <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        En cola para transcribir
+      </span>
     )
   }
   return null

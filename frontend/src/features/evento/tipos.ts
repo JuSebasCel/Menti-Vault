@@ -81,10 +81,10 @@ export type Ponencia = {
   readonly tieneTranscripcion: boolean
   /** En qué va su grabación: sin subir o en cola, transcribiéndose, lista o con un fallo. */
   readonly estado: 'en-cola' | 'procesando' | 'procesada' | 'fallida'
-  /** Si ya se le subió algo: una sesión en cola sin fuente es solo un hueco de la agenda. */
+  /** Si ya se le subió la grabación (`cargada_el`): toda sesión nace con `fuente = 'audio'`, así que la fuente no lo dice. */
   readonly tieneFuente: boolean
   /** Cuándo se creó la sesión: ordena la lista por las más recientes. */
-  readonly cargadaEl: string
+  readonly creadaEl: string
 }
 
 export type TipoDeSesion = 'conferencia' | 'taller' | 'panel' | 'apertura' | 'cierre'

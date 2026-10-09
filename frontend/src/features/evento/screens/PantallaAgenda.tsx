@@ -295,6 +295,54 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
   )
 }
 
+/*
+  Las sesiones que se cruzan en el mismo día se reparten en columnas, lado a
+  lado, como en cualquier calendario: antes se dibujaban en la misma caja y
+  la de encima tapaba a la otra, que parecía no existir.
+
+  Se agrupan en racimos (sesiones encadenadas por algún solape); dentro de un
+  racimo cada sesión toma la primera columna libre, y todo el racimo se
+  divide entre las columnas que llegó a necesitar.
+*/
+function distribuirSolapadas(sesiones: readonly Ponencia[]): Map<string, { columna: number; columnas: number }> {
+  const tramos = sesiones
+    .map((sesion) => {
+      const inicio = minutosDe(sesion.horaInicio) ?? 0
+      return { id: sesion.id, inicio, fin: minutosDe(sesion.horaFin) ?? inicio + 60 }
+    })
+    .sort((uno, otro) => uno.inicio - otro.inicio || otro.fin - uno.fin)
+
+  const reparto = new Map<string, { columna: number; columnas: number }>()
+  let racimo: { id: string; columna: number }[] = []
+  let finDelRacimo = -1
+  let finesPorColumna: number[] = []
+
+  const cerrarRacimo = (): void => {
+    for (const miembro of racimo) {
+      reparto.set(miembro.id, { columna: miembro.columna, columnas: finesPorColumna.length })
+    }
+    racimo = []
+    finesPorColumna = []
+  }
+
+  for (const tramo of tramos) {
+    if (tramo.inicio >= finDelRacimo) {
+      cerrarRacimo()
+    }
+    let columna = finesPorColumna.findIndex((fin) => fin <= tramo.inicio)
+    if (columna === -1) {
+      columna = finesPorColumna.length
+      finesPorColumna.push(tramo.fin)
+    } else {
+      finesPorColumna[columna] = tramo.fin
+    }
+    racimo.push({ id: tramo.id, columna })
+    finDelRacimo = Math.max(finDelRacimo, tramo.fin)
+  }
+  cerrarRacimo()
+  return reparto
+}
+
 function VistaPorDias({
   dias,
   sesiones,
@@ -338,12 +386,22 @@ function VistaPorDias({
           ))}
           {sesiones
             .filter((sesion) => sesion.fecha === dia)
-            .map((sesion) => {
+            .map((sesion, _indice, delDia) => {
+              const lugar = distribuirSolapadas(delDia).get(sesion.id) ?? { columna: 0, columnas: 1 }
               const inicio = (minutosDe(sesion.horaInicio) ?? 0) - primeraHora * 60
               const fin = (minutosDe(sesion.horaFin) ?? (minutosDe(sesion.horaInicio) ?? 0) + 60) - primeraHora * 60
               const alto = Math.max(((fin - inicio) / 60) * ALTO_DE_HORA - 4, 30)
               return (
-                <div key={sesion.id} className="group absolute inset-x-1 hover:z-20" style={{ top: (inicio / 60) * ALTO_DE_HORA + 2, height: alto }}>
+                <div
+                  key={sesion.id}
+                  className="group absolute hover:z-20"
+                  style={{
+                    top: (inicio / 60) * ALTO_DE_HORA + 2,
+                    height: alto,
+                    left: `calc(${(lugar.columna / lugar.columnas) * 100}% + 4px)`,
+                    width: `calc(${100 / lugar.columnas}% - 8px)`,
+                  }}
+                >
                   <button
                     type="button"
                     onClick={(evento) => alAbrir(sesion, evento.currentTarget)}

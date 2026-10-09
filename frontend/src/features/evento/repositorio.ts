@@ -93,8 +93,8 @@ function mapearPonencia(fila: Fila): Ponencia {
     eje: texto(fila['eje']),
     tieneTranscripcion: texto(fila['estado']) === 'procesada',
     estado: (texto(fila['estado']) || 'en-cola') as Ponencia['estado'],
-    tieneFuente: texto(fila['fuente']) !== '',
-    cargadaEl: texto(fila['cargada_el']),
+    tieneFuente: textoONulo(fila['cargada_el']) !== null,
+    creadaEl: texto(fila['creada_el']),
   }
 }
 

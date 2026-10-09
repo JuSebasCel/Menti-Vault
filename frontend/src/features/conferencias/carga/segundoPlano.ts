@@ -37,6 +37,7 @@ export type TareaEnSegundoPlano =
   perdió por el camino y lo honesto es volver a enseñar lo que dice la base.
 */
 const PLAZO_DE_ARRANQUE_MS = 90_000
+const PLAZO_DEL_FALLO_MS = 15_000
 
 /*
   Una subida que falla borra su conferencia, así que no queda tarjeta donde
@@ -159,7 +160,7 @@ export function olvidarTarea(idConferencia: string): void {
   `procesada`, la tarea ya no aporta nada y se descarta.
 */
 export function estadoParaMostrar(
-  conferencia: Conferencia,
+  conferencia: Pick<Conferencia, 'id' | 'estado'>,
   tarea: TareaEnSegundoPlano | undefined,
 ): TareaEnSegundoPlano | null {
   if (tarea === undefined) {
@@ -169,8 +170,15 @@ export function estadoParaMostrar(
   if (tarea.fase === 'iniciando') {
     const avanzo = conferencia.estado === 'procesando' || conferencia.estado === 'procesada'
     const caduco = Date.now() - tarea.desde > PLAZO_DE_ARRANQUE_MS
+    /*
+      Un reintento parte de una fila `fallida`, así que ese estado no basta
+      para saber que este intento terminó. Si a los quince segundos sigue
+      así, el backend ya lo rechazó: un fallo de verdad llega en el acto, y
+      una transcripción que arranca marca `procesando` antes.
+    */
+    const fallo = conferencia.estado === 'fallida' && Date.now() - tarea.desde > PLAZO_DEL_FALLO_MS
 
-    if (avanzo || caduco) {
+    if (avanzo || caduco || fallo) {
       queueMicrotask(() => {
         if (tareas.get(conferencia.id) === tarea) {
           poner(conferencia.id, null)
