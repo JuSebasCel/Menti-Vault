@@ -92,6 +92,17 @@ export function iniciales(nombre: string): string {
 }
 
 /*
+  Si ya hay una sesión con ese título en el evento (sin contar la que se
+  está editando). Sin mayúsculas, tildes ni espacios de los extremos: es la
+  misma regla que el índice único de la base, dicha antes de guardar y con
+  palabras, en vez del "conflicto" genérico que devolvería la base.
+*/
+export function tituloRepetido(ponencias: readonly { id: string; titulo: string }[], titulo: string, idPropio: string | null): boolean {
+  const normal = (texto: string): string => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+  return ponencias.some((ponencia) => ponencia.id !== idPropio && normal(ponencia.titulo) === normal(titulo))
+}
+
+/*
   Los ponentes de una sesión. Una sesión puede tener varios, y se guardan en
   el mismo campo separados por coma ("Ana Pérez, Luis Gómez"): así se leen
   bien en cualquier sitio que ya enseñaba el campo, sin otra columna ni otra

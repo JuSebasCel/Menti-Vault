@@ -274,83 +274,29 @@ def procesar_conferencia(
         else:
             nombre, contenido = repositorio.descargar_fuente(conferencia)
             segmentos = _segmentos_de_la_fuente(conferencia, nombre, contenido, transcribir)
-            if conferencia.fuente == "audio":
-                repositorio.guardar_transcripcion(conferencia, segmentos)
+            # También la de un .txt subido: la interfaz, Menti y las memorias
+            # leen siempre este archivo, con sus minutos, sea cual sea la fuente.
+            repositorio.guardar_transcripcion(conferencia, segmentos)
 
-        ventanas = agrupar_en_ventanas(segmentos, caracteres_por_ventana=caracteres_por_ventana)
-        fichas, propuestas = _analizar_ventanas(conferencia, ventanas, temas, analizar)
+        """
+        Procesar es transcribir, y nada más.
 
-        if not fichas:
-            raise ErrorDeBitacora("PROC_SIN_FICHAS")
-
+        Antes, después de transcribir se partía la charla en ventanas y se le
+        pedían fichas a un modelo. El producto ya no usa fichas —las memorias,
+        los artículos y Menti leen la transcripción—, y ese paso era el que
+        fallaba: un JSON mal cerrado en una ventana dejaba la conferencia como
+        `fallida` aunque la transcripción ya estuviera hecha y guardada.
+        `analizar` sigue en la firma para no tocar a quien llama.
+        """
         duracion = max(conferencia.duracion_en_segundos, duracion_de(segmentos))
-
-        """
-        Los temas que el análisis inventó se crean AHORA, antes de guardar las
-        fichas, porque `fichas.id_tema` es NOT NULL con clave foránea: una
-        ficha cuyo tema todavía no existe no se puede insertar.
-
-        Es también lo que hace que la taxonomía crezca sola. Antes estas fichas
-        caían al tema de respaldo —quedaban archivadas bajo algo que no era lo
-        suyo— y el tema real se iba a una cola de curaduría que nadie miraba.
-        """
-        """
-        El recorte va ANTES de crear los temas: un tema que solo lo pedia una
-        ficha descartada no tiene por que existir, y crearlo ensuciaria el
-        vocabulario con algo que al final no clasifica nada.
-        """
-        generadas = len(fichas)
-        fichas = _mejores(fichas, _cuantas_caben(conferencia.maximo_de_fichas, duracion))
-
-        """
-        Condensar va aqui: despues de recortar, sobre las que sobreviven.
-        Antes del recorte se pagarian condensaciones de fichas que se iban a
-        descartar igual.
-        """
-        if condensar is not None:
-            fichas = condensar_fichas(fichas, condensar)
-
-        """
-        Una linea por analisis con lo que de verdad paso.
-
-        Es lo que convierte "me dio ciento cuarenta y nueve fichas cuando pedi
-        pocas" en algo diagnosticable sin abrir la base: dice si el tope llego,
-        cuanto recorto y cuantas se condensaron. Sin esto los tres fallos
-        posibles —el tope no viajo, el recorte no corrio, la condensacion
-        fallo— se ven identicos desde fuera.
-        """
-        registro.info(
-            "analisis conferencia=%s pedidas=%s generadas=%d guardadas=%d condensadas=%d",
-            id_conferencia,
-            conferencia.maximo_de_fichas,
-            generadas,
-            len(fichas),
-            sum(1 for ficha in fichas if ficha.condensado),
-        )
-
-        creados = repositorio.crear_temas(
-            [ficha.nombre_de_tema_nuevo for ficha in fichas if ficha.nombre_de_tema_nuevo]
-        )
-        vocabulario = (*temas, *creados)
-        fichas = _resolver_temas_nuevos(fichas, vocabulario, _tema_de_respaldo(conferencia, vocabulario))
-
-        if not fichas:
-            raise ErrorDeBitacora("PROC_SIN_FICHAS")
-
         repositorio.guardar_resultado_del_analisis(
             id_conferencia,
-            fichas,
-            resumen_de(fichas, vocabulario),
+            (),
+            "",
             duracion,
             tiempos_estimados=all(segmento.estimado for segmento in segmentos),
         )
-        """
-        Las propuestas de tema se registran DESPUÉS de guardar las fichas: si
-        esta escritura falla, la conferencia ya quedó procesada y lo único que
-        se pierde es material de curaduría que reprocesar vuelve a producir.
-        Al revés, un fallo aquí dejaría la charla entera sin fichas.
-        """
-        repositorio.registrar_temas_propuestos(conferencia.evento, propuestas)
+        registro.info("transcripcion conferencia=%s segmentos=%d duracion=%d", id_conferencia, len(segmentos), duracion)
     except ErrorDeBitacora:
         repositorio.marcar_estado(id_conferencia, "fallida")
         raise

@@ -5,7 +5,7 @@ import { duracionDeArchivo } from '@/features/conferencias/carga/archivo'
 import { mensajeDeError } from '@/shared/errors'
 import { enDemostracion } from '../demostracion'
 import { esVideo, extraerAudio } from '../extraerAudio'
-import { fecha, sumarMinutos } from '../formato'
+import { fecha, sumarMinutos, tituloRepetido } from '../formato'
 import { carpetaDeFotosDeSesion, crearPonenteInvitado, crearSesion, subirFoto, subirGrabacion } from '../repositorio'
 import { SelectorDePonente, ponentesNuevos } from './SelectorDePonente'
 import { useEvento } from '../useEvento'
@@ -102,6 +102,9 @@ export function AsistenteDeGrabacion({
     setError(null)
     try {
       let id = idSesion
+      if (nueva && tituloRepetido(datos.ponencias, sesionNueva.titulo, null)) {
+        throw new Error('Ya hay una sesión con ese título en el evento. Elígela en la lista en vez de crear otra.')
+      }
       if (nueva) {
         for (const nombre of ponentesNuevos(datos.ponentes, sesionNueva.ponente)) {
           setFase(`Agregando a ${nombre}…`)

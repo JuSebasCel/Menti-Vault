@@ -9,7 +9,7 @@ import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { SelectorDeHora } from '../components/SelectorDeHora'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono } from '../components/piezas'
-import { MOMENTO, fecha, minutosEntre, momentoDe, sumarMinutos } from '../formato'
+import { MOMENTO, fecha, minutosEntre, momentoDe, sumarMinutos, tituloRepetido } from '../formato'
 import { actualizarEvento, actualizarSesion, crearPonenteInvitado, crearSesion, eliminarSesion } from '../repositorio'
 import { SelectorDePonente, ponentesNuevos } from '../components/SelectorDePonente'
 import type { CambiosDeSesion } from '../repositorio'
@@ -483,7 +483,7 @@ function VistaDeLista({
                 {Number(dia.slice(8, 10))}
               </span>
             </div>
-            <ol className="flex flex-1 flex-col gap-1">
+            <ol className="flex min-w-0 flex-1 flex-col gap-1">
               {sesiones
                 .filter((sesion) => sesion.fecha === dia)
                 .map((sesion) => (
@@ -497,8 +497,8 @@ function VistaDeLista({
                         {sesion.horaInicio} – {sesion.horaFin}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate font-medium">{sesion.titulo}</span>
-                        <span className="truncate text-sm text-texto-tenue">
+                        <span className="line-clamp-2 font-medium break-words">{sesion.titulo}</span>
+                        <span className="line-clamp-2 text-sm break-words text-texto-tenue">
                           {sesion.ponente} · {sesion.sala || 'Sin espacio'}
                         </span>
                       </span>
@@ -650,6 +650,10 @@ function FormularioDeSesion({
     minutosEntre(cambios.horaInicio, cambios.horaFin) > 0
 
   const guardar = async (): Promise<void> => {
+    if (tituloRepetido(datos.ponencias, cambios.titulo, inicial?.id ?? null)) {
+      setError('Ya hay una sesión con ese título en el evento. Cámbialo o abre la que ya existe.')
+      return
+    }
     setGuardando(true)
     setError(null)
     for (const nombre of ponentesNuevos(datos.ponentes, cambios.ponente)) {

@@ -9,6 +9,7 @@ import { USOS_DEL_CONSENTIMIENTO } from '../tipos'
 import type { DatosDelEvento, UsoDelConsentimiento } from '../tipos'
 import { BotonMind, Icono } from './piezas'
 import { CorreoDeInvitacion } from './VistaDelPonente'
+import { normalizarBusqueda } from './Filtros'
 
 /*
   Invitar a un ponente, por pasos como en la referencia: quién, a qué correo,
@@ -46,6 +47,10 @@ export function AsistenteDeInvitacion({
   const correoAceptable = correo.trim() === '' || correoValido
 
   const enviar = async (): Promise<void> => {
+    if (idPonente === null && datos.ponentes.some((ponente) => normalizarBusqueda(ponente.nombre) === normalizarBusqueda(nombre))) {
+      setError('Ya hay un ponente con ese nombre en el evento. Búscalo en la lista en vez de crearlo otra vez.')
+      return
+    }
     setEnviando(true)
     setError(null)
     const resultado =
