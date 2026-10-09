@@ -125,7 +125,14 @@ function situarAnclado(
   ventana.style.top = `${caja.top}px`
   ventana.style.right = `${window.innerWidth - caja.right}px`
 
-  const { width: anchoVentana, height: altoVentana } = ventana.getBoundingClientRect()
+  /*
+    `offsetWidth`/`offsetHeight` y no `getBoundingClientRect()`: este último
+    incluye la escala del FLIP, y en el primer cuadro la ventana mide lo que
+    el botón. Con eso un modal anclado a un botón del pie (Menti, en el dock)
+    "cabía" en su sitio y se abría por debajo de la pantalla.
+  */
+  const anchoVentana = ventana.offsetWidth
+  const altoVentana = ventana.offsetHeight
 
   ventana.style.top = `${Math.max(MARGEN, Math.min(caja.top, window.innerHeight - altoVentana - MARGEN))}px`
 

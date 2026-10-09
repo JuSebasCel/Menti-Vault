@@ -1515,3 +1515,20 @@
     animation: none;
   }
 }
+
+/* La M del fondo del acceso se dibuja una vez al entrar. */
+.acceso-m path {
+  stroke-dasharray: 100;
+  animation: acceso-dibuja 2.4s cubic-bezier(0.65, 0, 0.35, 1) 0.3s both;
+}
+
+@keyframes acceso-dibuja {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acceso-m path {
+    animation: none;
+  }
+}

@@ -118,9 +118,14 @@ async function buscar(datos: DatosDelEvento, pregunta: string, ponentesFiltro: r
           puntos += Math.min(veces, 3) * Math.log(1 + todas.length / (1 + (frecuencia.get(termino) ?? 0)))
         }
       }
-      return { ventana, puntos: puntos * (1 + distintos * 0.6) }
+      return { ventana, distintos, puntos: puntos * (1 + distintos * 0.6) }
     })
-    .filter((resultado) => resultado.puntos > 0)
+    /*
+      Con varios términos, un fragmento tiene que tener al menos dos: uno solo
+      suelto ("haces", "bien") aparece en cualquier charla y no responde nada.
+      Si ninguno llega, mejor decir que no se encontró que enseñar ruido.
+    */
+    .filter((resultado) => resultado.puntos > 0 && resultado.distintos >= Math.min(2, raices.length))
     .sort((uno, otro) => otro.puntos - uno.puntos)
 
   /* No más de dos fragmentos por ponencia, ni dos casi seguidos: una respuesta que repite la misma charla dice poco. */
@@ -155,8 +160,70 @@ function lista(nombres: readonly string[]): string {
   return nombres.length <= 1 ? (nombres[0] ?? '') : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1) ?? ''}`
 }
 
+/*
+  Las "herramientas" de Menti, en el orden en que se prueban: conversar,
+  la agenda, el resumen de una ponencia, quién habló de un tema y, solo si
+  la pregunta trata de verdad del contenido, buscar en las transcripciones.
+  Sin este primer filtro, un "¿qué haces?" se buscaba como si fuera un tema
+  y devolvía fragmentos de ponencias que no venían a cuento.
+*/
+/* El nombre de quien conversa, si lo dijo. Vive lo que vive la conversación. */
+let nombreDeLaPersona: string | null = null
+
+export function olvidarNombre(): void {
+  nombreDeLaPersona = null
+}
+
+function saludo(): string {
+  return nombreDeLaPersona === null ? '¡Hola!' : `¡Hola, ${nombreDeLaPersona}!`
+}
+
+const CONVERSACION: readonly { patron: RegExp; responder: (datos: DatosDelEvento) => string }[] = [
+  {
+    patron: /\b(como estas|como vas|que tal estas|como te va)\b/,
+    responder: (datos) => `Muy bien, gracias${nombreDeLaPersona === null ? '' : `, ${nombreDeLaPersona}`}. ¿Qué quieres saber de ${datos.evento.nombre}?`,
+  },
+  {
+    patron: /\b(que haces|quien eres|que eres|que puedes|que sabes|para que sirves|como funcionas|en que (me )?ayudas|ayuda|que te puedo preguntar)\b/,
+    responder: (datos) =>
+      `Soy Menti, y conozco las ponencias de ${datos.evento.nombre}. Puedo decirte quién habló de un tema, qué dijo alguien sobre algo, de qué trató una ponencia o qué sesiones hubo un día. Cuando cito algo, te digo quién lo dijo y en qué minuto, para que lo escuches.`,
+  },
+  {
+    patron: /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|que tal|saludos)\b/,
+    responder: (datos) => `${saludo()} Pregúntame lo que quieras sobre ${datos.evento.nombre}: un tema, un ponente o una sesión.`,
+  },
+  {
+    patron: /^(gracias|muchas gracias|genial|perfecto|excelente|vale|ok|listo|super)\b/,
+    responder: () => 'Con gusto. Si quieres, sigue preguntando: un tema, un ponente o un día del evento.',
+  },
+  { patron: /^(adios|chao|hasta luego|nos vemos)\b/, responder: () => 'Hasta luego. La conversación queda aquí mientras no abras una nueva.' },
+]
+
 export async function responder(datos: DatosDelEvento, pregunta: string): Promise<Respuesta> {
-  const normal = normalizar(pregunta)
+  const normal = normalizar(pregunta).replace(/[¿?¡!.,]/g, '').trim()
+
+  /*
+    Presentarse ("hola, soy Sebastián", "me llamo Ana"): se recuerda el
+    nombre y se contesta como persona, no como buscador. Solo cuenta si
+    después del nombre no viene una pregunta sobre el evento.
+  */
+  const presentacion = /\b(me llamo|mi nombre es|soy)\s+([a-zñ]+)(\s+[a-zñ]+)?\s*$/.exec(normal)
+  if (presentacion !== null && ponentesNombrados(datos, pregunta).length === 0) {
+    const crudo = pregunta.replace(/[¿?¡!.,]/g, '').trim().split(/\s+/)
+    const posicion = normal.split(/\s+/).indexOf(presentacion[2] ?? '')
+    const nombre = posicion >= 0 ? (crudo[posicion] ?? presentacion[2] ?? '') : (presentacion[2] ?? '')
+    nombreDeLaPersona = nombre.charAt(0).toUpperCase() + nombre.slice(1)
+    return {
+      texto: `¡Mucho gusto, ${nombreDeLaPersona}! Soy Menti. Conozco las ponencias de ${datos.evento.nombre}: pregúntame quién habló de un tema, qué dijo alguien o qué sesiones hubo un día.`,
+      fragmentos: [],
+      sesiones: [],
+    }
+  }
+
+  const charla = CONVERSACION.find((intencion) => intencion.patron.test(normal))
+  if (charla !== undefined) {
+    return { texto: charla.responder(datos), fragmentos: [], sesiones: [] }
+  }
   const nombrados = ponentesNombrados(datos, pregunta)
   const diaPedido = Object.entries(DIAS).find(([nombre]) => normal.includes(nombre))
 
@@ -184,10 +251,14 @@ export async function responder(datos: DatosDelEvento, pregunta: string): Promis
   }
 
   /* De qué trató una ponencia: su memoria lo dice mejor que cualquier fragmento suelto. */
-  if (/(resum|de que (trato|hablo|va)|sobre que (trato|hablo)|que dijo|conclusion)/.test(normal) && nombrados.length > 0) {
+  /* Si además del ponente se nombra un tema ("¿qué dijo Rafael sobre la equidad?"), se busca ese tema en su charla. */
+  const partesDeNombres = new Set(nombrados.flatMap((nombre) => normalizar(nombre).split(' ')))
+  const tema = terminos(pregunta).filter((palabra) => !partesDeNombres.has(palabra))
+  const pideTema = /\b(sobre|acerca|respecto)\b/.test(normal) && tema.length > 0
+  if (/(resum|de que (trato|hablo|va)|sobre que (trato|hablo)|que dijo|conclusion)/.test(normal) && nombrados.length > 0 && !pideTema) {
     const ponencia = datos.ponencias.find((una) => nombrados.some((nombre) => mismoPonente(una.ponente, nombre)))
     const memoria = datos.memorias.find((una) => una.idConferencia === ponencia?.id && una.resumen !== '')
-    if (ponencia !== undefined && memoria !== undefined && !/(dijo sobre|hablo de|hablo sobre)/.test(normal)) {
+    if (ponencia !== undefined && memoria !== undefined) {
       return {
         texto: memoria.resumen,
         puntos: memoria.conclusiones,
@@ -199,8 +270,22 @@ export async function responder(datos: DatosDelEvento, pregunta: string): Promis
 
   /* Quién habló de algo: los ponentes con más fragmentos sobre el tema. */
   if (/^(quien|quienes)\b|\bquien(es)? (hablo|hablaron|menciono|trato)/.test(normal)) {
-    const fragmentos = await buscar(datos, pregunta, [], 8)
-    const quienes = [...new Set(fragmentos.map((fragmento) => fragmento.ponente))]
+    /*
+      Primero quienes lo tratan en su memoria —es el tema de su charla, no una
+      mención al paso— y después quienes solo lo nombran en la transcripción.
+    */
+    const raices = terminos(pregunta).map(raiz)
+    const porMemoria = datos.ponencias
+      .filter((ponencia) =>
+        datos.memorias.some(
+          (memoria) => memoria.idConferencia === ponencia.id && raices.some((termino) => normalizar(memoria.resumen).includes(termino)),
+        ),
+      )
+      .map((ponencia) => ponencia.ponente)
+    const sueltos = await buscar(datos, pregunta, [], 10)
+    const deLaMemoria = porMemoria.length === 0 ? [] : await buscar(datos, pregunta, porMemoria, 4)
+    const fragmentos = [...deLaMemoria, ...sueltos.filter((fragmento) => !deLaMemoria.some((otro) => otro.idConferencia === fragmento.idConferencia))]
+    const quienes = [...new Set([...porMemoria, ...fragmentos.map((fragmento) => fragmento.ponente)])]
     if (quienes.length === 0) {
       return { texto: 'Nadie lo trató de forma directa en las ponencias transcritas.', fragmentos: [], sesiones: [] }
     }
@@ -212,7 +297,14 @@ export async function responder(datos: DatosDelEvento, pregunta: string): Promis
   }
 
   /* Cualquier otra cosa: buscar en lo que se dijo, en la ponencia de quien se nombró si se nombró a alguien. */
-  const fragmentos = await buscar(datos, pregunta, nombrados, 4)
+  if (tema.length === 0 && nombrados.length === 0) {
+    return {
+      texto: 'No estoy seguro de qué buscar. Pregúntame por un tema ("¿quién habló de ética?"), un ponente o un día del evento.',
+      fragmentos: [],
+      sesiones: [],
+    }
+  }
+  const fragmentos = await buscar(datos, nombrados.length > 0 && tema.length > 0 ? tema.join(' ') : pregunta, nombrados, 4)
   if (fragmentos.length === 0) {
     return {
       texto: 'No encontré eso en las transcripciones. Prueba con otras palabras, o pregúntame por un ponente o un tema.',

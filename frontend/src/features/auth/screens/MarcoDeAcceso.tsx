@@ -77,8 +77,44 @@ export function MarcoDeAcceso({ idTitulo, titulo, children }: PropsMarcoDeAcceso
         variants={CONTENEDOR}
         initial={estadoInicial}
         animate="visible"
-        className="flex min-h-0 flex-col justify-between gap-8 overflow-hidden rounded-[32px] bg-panel p-12"
+        className="relative isolate flex min-h-0 flex-col justify-between gap-8 overflow-hidden rounded-[32px] bg-panel p-12"
       >
+        {/*
+          El fondo del panel: una cuadrícula de puntos que se desvanece hacia
+          el centro y la M de la marca, enorme y en contorno, que se dibuja
+          sola una vez al entrar. Va detrás de todo y no se lee: es textura.
+        */}
+        <svg aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 size-full text-filete-fuerte">
+          <defs>
+            <pattern id="puntos-de-acceso" width="22" height="22" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1.3" fill="currentColor" />
+            </pattern>
+            <radialGradient id="desvanecido-de-acceso" cx="80%" cy="15%" r="85%">
+              <stop offset="0%" stopColor="white" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="white" stopOpacity="0" />
+            </radialGradient>
+            <mask id="mascara-de-acceso">
+              <rect width="100%" height="100%" fill="url(#desvanecido-de-acceso)" />
+            </mask>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#puntos-de-acceso)" mask="url(#mascara-de-acceso)" />
+        </svg>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 32 32"
+          className="acceso-m pointer-events-none absolute -top-10 -right-16 -z-10 size-[520px] text-texto opacity-[0.07]"
+        >
+          <path
+            d="M9.5 22 V10.5 L16 17 L22.5 10.5 V22"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength={100}
+          />
+        </svg>
+
         <div>
           <motion.h1 variants={ELEMENTO} className="text-6xl leading-[1.02] font-semibold tracking-tight text-texto">
             Menti Vault

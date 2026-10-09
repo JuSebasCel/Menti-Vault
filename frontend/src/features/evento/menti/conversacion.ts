@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { olvidarNombre } from './motor'
 import type { Respuesta } from './motor'
 
 /*
@@ -46,5 +47,6 @@ export function marcarLeida(id: string): void {
 }
 
 export function nuevaConversacion(): void {
+  olvidarNombre()
   publicar([])
 }

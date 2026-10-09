@@ -4,15 +4,9 @@ import { useSession } from '@/features/auth/session'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { MiniaturaDeFoto, useFotos } from '../components/GaleriaDeFotos'
-import { BotonMind, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
+import { EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
 import { ESTADO_DE_PUBLICACION, RED, fecha, fechaYHora, mismoPonente } from '../formato'
-import {
-  carpetaDeFotosDeSesion,
-  carpetaDeFotosDelEvento,
-  crearPublicacion,
-  listarFotos,
-  subirFoto,
-} from '../repositorio'
+import { carpetaDeFotosDeSesion, carpetaDeFotosDelEvento, crearPublicacion, listarFotos, subirFoto } from '../repositorio'
 import type { Foto } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Ponencia, Publicacion } from '../tipos'
@@ -20,15 +14,16 @@ import type { DatosDelEvento, Ponencia, Publicacion } from '../tipos'
 /*
   Lo que sale en las redes del evento.
 
-  Arriba, un carrusel con todas las fotos —las del evento y las que se
-  subieron con cada sesión— y, para la foto elegida, publicaciones
-  propuestas con esa foto: el agradecimiento al ponente con una cita suya ya
-  verificada en los artículos, o el agradecimiento general si es del evento.
-  Abajo, las piezas ya preparadas, por día.
+  Arriba, publicaciones recomendadas armadas con el material que hay: el
+  primer día con una foto del evento, el agradecimiento a los ponentes, y una
+  por sesión con su foto y una cita del ponente ya verificada en los
+  artículos. Las fotos en sí quedan escondidas detrás de "Ver fotos": son
+  material de trabajo, no el centro de la pantalla. Abajo, las piezas ya
+  preparadas, por día.
 
   Todo respeta la autorización: de quien no autorizó difundir en redes, o
   todavía no respondió, no se propone nada, no se le nombra y sus fotos no
-  entran al carrusel.
+  se usan.
 */
 export function PantallaPublicaciones(): ReactElement {
   return <CargaDelEvento>{(datos) => <Redes datos={datos} />}</CargaDelEvento>
@@ -36,19 +31,18 @@ export function PantallaPublicaciones(): ReactElement {
 
 type FotoDelCarrusel = { readonly foto: Foto; readonly sesion: Ponencia | null }
 
-type Sugerencia = {
+type Recomendada = {
   readonly id: string
   readonly titulo: string
   readonly texto: string
+  readonly foto: Foto | null
   readonly cita: string
   readonly ponente: string
   readonly idConferencia: string | null
 }
 
 function listaConY(nombres: readonly string[]): string {
-  return nombres.length <= 1
-    ? (nombres[0] ?? '')
-    : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1) ?? ''}`
+  return nombres.length <= 1 ? (nombres[0] ?? '') : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1) ?? ''}`
 }
 
 function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
@@ -60,15 +54,12 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const carpetaDelEvento = carpetaDeFotosDelEvento(idDueno, datos.evento.nombre)
   const { fotos: fotosDelEvento, recargar } = useFotos(carpetaDelEvento)
   const [fotosPorSesion, setFotosPorSesion] = useState<Record<string, readonly Foto[]>>({})
-  const [elegida, setElegida] = useState<string | null>(null)
+  const [viendoFotos, setViendoFotos] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
   const entrada = useRef<HTMLInputElement>(null)
 
   const conRedes = useMemo(
-    () =>
-      datos.ponentes.filter(
-        (ponente) => ponente.consentimiento === 'aceptado' && ponente.usos.redes === true,
-      ),
+    () => datos.ponentes.filter((ponente) => ponente.consentimiento === 'aceptado' && ponente.usos.redes === true),
     [datos.ponentes],
   )
   const sinPermiso = datos.ponentes.filter(
@@ -79,17 +70,9 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
 
   useEffect(() => {
     let vigente = true
-    const autorizadas = datos.ponencias.filter((ponencia) =>
-      conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre)),
-    )
+    const autorizadas = datos.ponencias.filter((ponencia) => conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre)))
     void Promise.all(
-      autorizadas.map(
-        async (ponencia) =>
-          [
-            ponencia.id,
-            await listarFotos(carpetaDeFotosDeSesion(ponencia.idDueno, ponencia.id)),
-          ] as const,
-      ),
+      autorizadas.map(async (ponencia) => [ponencia.id, await listarFotos(carpetaDeFotosDeSesion(ponencia.idDueno, ponencia.id))] as const),
     ).then((pares) => {
       if (vigente) {
         setFotosPorSesion(Object.fromEntries(pares))
@@ -103,70 +86,67 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const carrusel: FotoDelCarrusel[] = useMemo(
     () => [
       ...(fotosDelEvento ?? []).map((foto) => ({ foto, sesion: null })),
-      ...datos.ponencias.flatMap((ponencia) =>
-        (fotosPorSesion[ponencia.id] ?? []).map((foto) => ({ foto, sesion: ponencia })),
-      ),
+      ...datos.ponencias.flatMap((ponencia) => (fotosPorSesion[ponencia.id] ?? []).map((foto) => ({ foto, sesion: ponencia }))),
     ],
     [fotosDelEvento, fotosPorSesion, datos.ponencias],
   )
-  const actual = carrusel.find((item) => item.foto.ruta === elegida) ?? carrusel[0] ?? null
 
-  /* Lo que se puede publicar con la foto elegida. */
-  const sugerencias = useMemo((): Sugerencia[] => {
-    if (actual === null) {
-      return []
-    }
+  const recomendadas = useMemo((): Recomendada[] => {
     const evento = datos.evento.nombre
-    if (actual.sesion === null) {
-      const horas = Math.round(
-        datos.ponencias.reduce((suma, ponencia) => suma + ponencia.duracionEnSegundos, 0) / 3600,
-      )
-      return [
-        {
-          id: 'gracias',
-          titulo: 'Agradecer a todos los ponentes',
-          texto: `Gracias a quienes hicieron posible ${evento}. A ${listaConY(conRedes.map((ponente) => ponente.nombre))}, por compartir lo que saben y abrir conversaciones que nos llevamos para seguir pensando.`,
-          cita: '',
-          ponente: '',
-          idConferencia: null,
-        },
-        {
-          id: 'cifras',
-          titulo: 'El evento en cifras',
-          texto: `${evento} en cifras: ${datos.ponencias.length} sesiones, ${horas} horas de conversación y ${datos.evento.ejes.length} ejes temáticos. Gracias a todos los que se conectaron.`,
-          cita: '',
-          ponente: '',
-          idConferencia: null,
-        },
-      ]
-    }
-    const sesion = actual.sesion
-    const citas = datos.producciones
-      .flatMap((produccion) => produccion.evidencias)
-      .filter((evidencia) => evidencia.idConferencia === sesion.id)
-    const lista: Sugerencia[] = [
-      {
-        id: `gracias-${sesion.id}`,
-        titulo: `Agradecer a ${sesion.ponente}`,
-        texto: `Gracias, ${sesion.ponente}, por «${sesion.titulo}» en ${evento}.`,
-        cita: '',
-        ponente: sesion.ponente,
-        idConferencia: sesion.id,
-      },
-    ]
-    const cita = citas[0]
-    if (cita !== undefined) {
+    const fotosEvento = fotosDelEvento ?? []
+    const lista: Recomendada[] = []
+    const dias = [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort()
+    const primerDia = datos.ponencias
+      .filter((ponencia) => ponencia.fecha === dias[0] && ponencia.horaInicio !== null)
+      .sort((una, otra) => (una.horaInicio ?? '').localeCompare(otra.horaInicio ?? ''))
+    const apertura = primerDia[0]
+    const siguientes = primerDia
+      .slice(1)
+      .filter((ponencia) => conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre)))
+      .map((ponencia) => ponencia.ponente)
+    if (apertura !== undefined) {
       lista.push({
-        id: `cita-${sesion.id}`,
-        titulo: 'Foto con una cita suya',
-        texto: `«${cita.texto}» — ${sesion.ponente} en ${evento}, sobre ${sesion.titulo.toLowerCase()}.`,
-        cita: cita.texto,
-        ponente: sesion.ponente,
-        idConferencia: sesion.id,
+        id: 'primer-dia',
+        titulo: `Primer día de ${evento}`,
+        texto: `Así arrancó ${evento}. Abrimos con «${apertura.titulo}»${
+          siguientes.length > 0 ? ` y seguimos con ${listaConY(siguientes)}` : ''
+        }. Gracias a quienes nos acompañaron en esta primera jornada.`,
+        foto: fotosEvento[0] ?? null,
+        cita: '',
+        ponente: '',
+        idConferencia: null,
+      })
+    }
+    lista.push({
+      id: 'gracias',
+      titulo: 'Agradecer a todos los ponentes',
+      texto: `Gracias a quienes hicieron posible ${evento}. A ${listaConY(conRedes.map((ponente) => ponente.nombre))}, por compartir lo que saben y abrir conversaciones que nos llevamos para seguir pensando.`,
+      foto: fotosEvento[1] ?? fotosEvento[0] ?? null,
+      cita: '',
+      ponente: '',
+      idConferencia: null,
+    })
+    for (const ponencia of datos.ponencias) {
+      const foto = fotosPorSesion[ponencia.id]?.[0]
+      if (foto === undefined) {
+        continue
+      }
+      const cita = datos.producciones.flatMap((produccion) => produccion.evidencias).find((evidencia) => evidencia.idConferencia === ponencia.id)
+      lista.push({
+        id: ponencia.id,
+        titulo: `Agradecer a ${ponencia.ponente}`,
+        texto:
+          cita === undefined
+            ? `Gracias, ${ponencia.ponente}, por «${ponencia.titulo}» en ${evento}.`
+            : `«${cita.texto}» — ${ponencia.ponente} en ${evento}. Gracias por «${ponencia.titulo}».`,
+        foto,
+        cita: cita?.texto ?? '',
+        ponente: ponencia.ponente,
+        idConferencia: ponencia.id,
       })
     }
     return lista
-  }, [actual, datos, conRedes])
+  }, [datos, conRedes, fotosDelEvento, fotosPorSesion])
 
   const subir = async (lista: FileList): Promise<void> => {
     setSubiendo(true)
@@ -178,9 +158,7 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   }
 
   const visibles = datos.publicaciones.filter(
-    (publicacion) =>
-      (red === 'todas' || publicacion.red === red) &&
-      (estado === 'todos' || publicacion.estado === estado),
+    (publicacion) => (red === 'todas' || publicacion.red === red) && (estado === 'todos' || publicacion.estado === estado),
   )
   const porDia = useMemo(() => {
     const dias = new Map<string, Publicacion[]>()
@@ -194,6 +172,15 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Redes">
+        <button
+          type="button"
+          onClick={() => setViendoFotos(!viendoFotos)}
+          aria-expanded={viendoFotos}
+          className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--mind-neutro)] px-4 text-sm font-medium transition-colors hover:bg-[var(--mind-variante)]"
+        >
+          <Icono nombre="photo_library" className="text-lg" />
+          {viendoFotos ? 'Ocultar fotos' : `Ver fotos (${carrusel.length})`}
+        </button>
         <Filtros
           grupos={[
             {
@@ -205,10 +192,7 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
               alCambiar: setRed,
               opciones: [
                 { valor: 'todas', etiqueta: 'Todas' },
-                ...(['linkedin', 'instagram', 'x'] as const).map((una) => ({
-                  valor: una,
-                  etiqueta: RED[una].etiqueta,
-                })),
+                ...(['linkedin', 'instagram', 'x'] as const).map((una) => ({ valor: una, etiqueta: RED[una].etiqueta })),
               ],
             },
             {
@@ -228,13 +212,6 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
             },
           ]}
         />
-        <BotonMind
-          icono="add_photo_alternate"
-          disabled={subiendo}
-          onClick={() => entrada.current?.click()}
-        >
-          {subiendo ? 'Subiendo…' : 'Fotos del evento'}
-        </BotonMind>
         <input
           ref={entrada}
           type="file"
@@ -255,101 +232,72 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
           <Icono nombre="shield_person" className="text-xl" />
           <span className="text-sm">
             Sin piezas ni fotos de {listaConY(sinPermiso.map((ponente) => ponente.nombre))}: no{' '}
-            {sinPermiso.length === 1 ? 'autorizó' : 'autorizaron'} difundir en redes o no{' '}
-            {sinPermiso.length === 1 ? 'ha' : 'han'} respondido.
+            {sinPermiso.length === 1 ? 'autorizó' : 'autorizaron'} difundir en redes o no {sinPermiso.length === 1 ? 'ha' : 'han'} respondido.
           </span>
         </div>
       )}
 
-      {/* El carrusel con todas las fotos: las del evento primero, luego las de cada sesión. */}
-      <Tarjeta className="flex flex-col gap-4 p-4">
-        <span className="px-2 pt-2 text-2xl">Fotos</span>
-        {carrusel.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => entrada.current?.click()}
-            className="flex cursor-pointer flex-col items-center gap-2 rounded-[20px] border-2 border-dashed border-filete-fuerte px-6 py-10 text-texto-tenue transition-colors hover:bg-panel"
-          >
-            <Icono nombre="photo_library" className="text-4xl" />
-            <span>Sube fotos del evento, o añádelas a cada sesión al subir su grabación.</span>
-          </button>
-        ) : (
-          <ul className="flex snap-x gap-2 overflow-x-auto pb-2">
-            {carrusel.map((item) => {
-              const activa = item.foto.ruta === actual?.foto.ruta
-              return (
-                <li key={item.foto.ruta} className="w-44 shrink-0 snap-start">
-                  <button
-                    type="button"
-                    onClick={() => setElegida(item.foto.ruta)}
-                    className={`flex w-full cursor-pointer flex-col gap-2 rounded-[20px] p-1.5 text-left transition-colors ${activa ? 'bg-acento text-acento-contraste' : 'hover:bg-panel'}`}
-                  >
-                    <MiniaturaDeFoto
-                      ruta={item.foto.ruta}
-                      className="aspect-square rounded-[16px]"
-                    />
-                    <span className="truncate px-1.5 pb-1 text-xs font-medium">
-                      {item.sesion === null ? datos.evento.nombre : item.sesion.ponente}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
+      {/* Las fotos, escondidas hasta pedirlas. */}
+      {viendoFotos ? (
+        <Tarjeta className="entrar-escalonado p-3">
+          <ul className="flex snap-x gap-2 overflow-x-auto pb-1">
+            {carrusel.map((item) => (
+              <li key={item.foto.ruta} className="flex w-36 shrink-0 snap-start flex-col gap-1.5">
+                <MiniaturaDeFoto ruta={item.foto.ruta} className="aspect-square rounded-[16px]" />
+                <span className="truncate px-1 text-xs font-medium">{item.sesion === null ? datos.evento.nombre : item.sesion.ponente}</span>
+              </li>
+            ))}
+            <li className="w-36 shrink-0">
+              <button
+                type="button"
+                onClick={() => entrada.current?.click()}
+                className="flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-[16px] border-2 border-dashed border-filete-fuerte text-sm text-texto-tenue transition-colors hover:bg-panel"
+              >
+                <Icono nombre="add_photo_alternate" className="text-2xl" />
+                {subiendo ? 'Subiendo…' : 'Añadir'}
+              </button>
+            </li>
           </ul>
-        )}
-      </Tarjeta>
+        </Tarjeta>
+      ) : null}
 
-      {actual === null ? null : (
-        <div className="entrar-escalonado grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-          <Tarjeta className="flex flex-col gap-3 p-4">
-            <MiniaturaDeFoto ruta={actual.foto.ruta} className="aspect-[4/3] rounded-[20px]" />
-            <span className="px-2 text-sm text-texto-tenue">
-              {actual.sesion === null
-                ? `Foto del evento · ${datos.evento.nombre}`
-                : `${actual.sesion.titulo} · ${actual.sesion.ponente}`}
-            </span>
-          </Tarjeta>
-          <Tarjeta className="flex flex-col gap-3">
-            <span className="text-2xl">Para esta foto</span>
-            <ul className="flex flex-col gap-2">
-              {sugerencias.map((sugerencia) => (
-                <FilaDeSugerencia
-                  key={sugerencia.id}
-                  sugerencia={sugerencia}
-                  alAnadir={async () => {
-                    const resultado = await crearPublicacion(idDueno, datos.evento.nombre, {
-                      red: 'instagram',
-                      formato: sugerencia.cita === '' ? 'anuncio' : 'cita',
-                      texto: sugerencia.texto,
-                      cita: sugerencia.cita,
-                      ponente: sugerencia.ponente,
-                      idConferencia: sugerencia.idConferencia,
-                    })
-                    if (resultado.ok) {
-                      invalidar()
-                    }
-                    return resultado.ok
-                  }}
-                />
-              ))}
-            </ul>
-          </Tarjeta>
+      <section className="flex flex-col gap-2">
+        <h2 className="px-1 text-2xl font-medium">Recomendadas</h2>
+        <div className="entrar-escalonado grid grid-cols-2 gap-2">
+          {recomendadas.map((recomendada) => (
+            <TarjetaRecomendada
+              key={recomendada.id}
+              recomendada={recomendada}
+              alPedirFoto={() => {
+                setViendoFotos(true)
+                entrada.current?.click()
+              }}
+              alAnadir={async () => {
+                const resultado = await crearPublicacion(idDueno, datos.evento.nombre, {
+                  red: 'instagram',
+                  formato: recomendada.cita === '' ? 'anuncio' : 'cita',
+                  texto: recomendada.texto,
+                  cita: recomendada.cita,
+                  ponente: recomendada.ponente,
+                  idConferencia: recomendada.idConferencia,
+                })
+                if (resultado.ok) {
+                  invalidar()
+                }
+                return resultado.ok
+              }}
+            />
+          ))}
         </div>
-      )}
+      </section>
 
       <div className="entrar-escalonado flex flex-col gap-5">
         {porDia.map(([dia, publicaciones]) => (
           <section key={dia} className="flex flex-col gap-2">
-            <h2 className="px-1 text-2xl font-medium">
-              {dia === 'sin-fecha' ? 'Sin programar' : fecha(dia)}
-            </h2>
+            <h2 className="px-1 text-2xl font-medium">{dia === 'sin-fecha' ? 'Sin programar' : fecha(dia)}</h2>
             <div className="grid grid-cols-2 gap-2">
               {publicaciones.map((publicacion) => (
-                <Pieza
-                  key={publicacion.id}
-                  publicacion={publicacion}
-                  evento={datos.evento.nombre}
-                />
+                <Pieza key={publicacion.id} publicacion={publicacion} evento={datos.evento.nombre} />
               ))}
             </div>
           </section>
@@ -359,43 +307,62 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   )
 }
 
-function FilaDeSugerencia({
-  sugerencia,
+function TarjetaRecomendada({
+  recomendada,
   alAnadir,
+  alPedirFoto,
 }: {
-  sugerencia: Sugerencia
+  recomendada: Recomendada
   alAnadir: () => Promise<boolean>
+  alPedirFoto: () => void
 }): ReactElement {
   const [anadida, setAnadida] = useState(false)
   const [copiado, setCopiado] = useState(false)
   return (
-    <li className="flex flex-col gap-3 rounded-[20px] bg-panel p-4">
-      <span className="text-[15px] font-semibold">{sugerencia.titulo}</span>
-      <p className="text-sm leading-relaxed">{sugerencia.texto}</p>
-      <span className="flex gap-2">
+    <Tarjeta className="flex gap-4 p-4">
+      {recomendada.foto === null ? (
         <button
           type="button"
-          onClick={() => {
-            void navigator.clipboard?.writeText(sugerencia.texto)
-            setCopiado(true)
-            window.setTimeout(() => setCopiado(false), 1600)
-          }}
-          className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--mind-neutro)] px-3 text-xs font-medium"
+          onClick={alPedirFoto}
+          aria-label="Añadir una foto"
+          className="flex size-24 shrink-0 cursor-pointer items-center justify-center rounded-[16px] border-2 border-dashed border-filete-fuerte text-texto-tenue transition-colors hover:bg-panel"
         >
-          <Icono nombre={copiado ? 'check' : 'content_copy'} className="text-base" />
-          {copiado ? 'Copiado' : 'Copiar texto'}
+          <Icono nombre="add_photo_alternate" className="text-2xl" />
         </button>
-        <button
-          type="button"
-          disabled={anadida}
-          onClick={() => void alAnadir().then(setAnadida)}
-          className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-acento px-3 text-xs font-medium text-acento-contraste disabled:opacity-50"
-        >
-          <Icono nombre={anadida ? 'check' : 'add'} className="text-base" />
-          {anadida ? 'Añadida a las piezas' : 'Añadir a las piezas'}
-        </button>
-      </span>
-    </li>
+      ) : (
+        <MiniaturaDeFoto ruta={recomendada.foto.ruta} className="size-24 shrink-0 rounded-[16px]" />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="flex items-center gap-2">
+          <Icono nombre="auto_awesome" className="text-base [color:var(--tono-violeta-texto)]" />
+          <span className="truncate text-[15px] font-semibold">{recomendada.titulo}</span>
+        </span>
+        <p className="line-clamp-3 text-sm leading-relaxed text-texto-tenue">{recomendada.texto}</p>
+        <span className="mt-auto flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard?.writeText(recomendada.texto)
+              setCopiado(true)
+              window.setTimeout(() => setCopiado(false), 1600)
+            }}
+            className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--mind-neutro)] px-3 text-xs font-medium"
+          >
+            <Icono nombre={copiado ? 'check' : 'content_copy'} className="text-base" />
+            {copiado ? 'Copiado' : 'Copiar texto'}
+          </button>
+          <button
+            type="button"
+            disabled={anadida}
+            onClick={() => void alAnadir().then(setAnadida)}
+            className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-acento px-3 text-xs font-medium text-acento-contraste disabled:opacity-40"
+          >
+            <Icono nombre={anadida ? 'check' : 'add'} className="text-base" />
+            {anadida ? 'Añadida' : 'Añadir a las piezas'}
+          </button>
+        </span>
+      </div>
+    </Tarjeta>
   )
 }
 

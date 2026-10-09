@@ -2,40 +2,38 @@ import { useId } from 'react'
 import type { ReactElement } from 'react'
 
 /*
-  La marca de Menti Vault: el dial de una caja fuerte —un anillo con su
-  manija— recortado en un cuadrado redondeado.
+  La marca de Menti Vault: la "M" con el trazo redondeado de la píldora del
+  dock, recortada en un cuadrado de esquinas suaves. Es la misma figura que
+  `public/favicon.svg` y que lleva dentro el logo de Menti, para que la
+  pestaña, el acceso y el chat se lean como un mismo producto.
 
-  El dial dice "bóveda" sin necesitar el nombre, y el cuadrado tiene el
-  mismo radio proporcional que las tarjetas de la app (24 sobre ~200 px).
-  Es monocromo como el resto de la interfaz: el cuadrado toma el color del
-  texto (`currentColor`) y el dial es un hueco, no un segundo color, así que
-  funciona igual sobre el beige del tema claro y el negro del oscuro sin
-  tocar nada. Reemplaza a la página pautada azul de Bitácora AI, que era de
-  la paleta anterior.
+  Reemplaza al dial de caja fuerte: a tamaño de pestaña el dial se volvía un
+  círculo con un punto y no se distinguía de cualquier otra app.
 
-  El `mask` necesita un id único: con dos logos en la misma página y un id
-  fijo, el segundo usaría la máscara del primero.
+  Monocromo: el cuadrado toma el color del texto (`currentColor`) y la M es
+  un hueco, así que funciona igual en claro y en oscuro. El `mask` necesita
+  un id único: con dos logos en la misma página y un id fijo, el segundo
+  usaría la máscara del primero.
 */
 export function MarcaDeMenti({ tamano = 32, className }: { tamano?: number; className?: string }): ReactElement {
   const idDeMascara = useId()
 
   return (
-    <svg
-      viewBox="0 0 32 32"
-      width={tamano}
-      height={tamano}
-      aria-hidden="true"
-      className={className}
-    >
+    <svg viewBox="0 0 32 32" width={tamano} height={tamano} aria-hidden="true" className={className}>
       <defs>
         <mask id={idDeMascara}>
-          <rect width="32" height="32" rx="9" fill="white" />
-          <circle cx="16" cy="16" r="8.25" fill="none" stroke="black" strokeWidth="2.75" />
-          <circle cx="16" cy="16" r="2.4" fill="black" />
-          <path d="M16 16 L20.6 11.4" stroke="black" strokeWidth="2.75" strokeLinecap="round" />
+          <rect width="32" height="32" rx="10" fill="white" />
+          <path
+            d="M9.5 22 V10.5 L16 17 L22.5 10.5 V22"
+            fill="none"
+            stroke="black"
+            strokeWidth="3.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </mask>
       </defs>
-      <rect width="32" height="32" rx="9" fill="currentColor" mask={`url(#${idDeMascara})`} />
+      <rect width="32" height="32" rx="10" fill="currentColor" mask={`url(#${idDeMascara})`} />
     </svg>
   )
 }
@@ -45,7 +43,7 @@ export function Logo({ tamano = 32 }: { tamano?: number }): ReactElement {
   return (
     <span className="inline-flex items-center gap-2.5 text-texto">
       <MarcaDeMenti tamano={tamano} />
-      <span className="font-titulo text-[22px] leading-none font-semibold tracking-tight">Menti Vault</span>
+      <span className="text-[22px] leading-none font-semibold tracking-tight">Menti Vault</span>
     </span>
   )
 }

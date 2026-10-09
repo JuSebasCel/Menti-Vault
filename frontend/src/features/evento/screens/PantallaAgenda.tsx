@@ -65,6 +65,17 @@ function diasDelEvento(datos: DatosDelEvento): string[] {
   return [...dias].sort()
 }
 
+/* Lo que le falta a una sesión para entrar en la cuadrícula, dicho con sus datos. */
+function queLeFalta(sesion: Ponencia): string {
+  if (sesion.horaInicio === null) {
+    return 'Le falta la hora de inicio'
+  }
+  if (sesion.horaFin === null) {
+    return `Empieza a las ${sesion.horaInicio}, le falta la hora de fin`
+  }
+  return `Termina (${sesion.horaFin}) antes de empezar (${sesion.horaInicio})`
+}
+
 /* La vista elegida se recuerda: volver a la agenda y encontrarla cambiada obliga a elegirla otra vez. */
 const CLAVE_DE_VISTA = 'menti-vista-de-agenda'
 
@@ -200,7 +211,7 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
         ancho="angosto"
       >
         <div className="flex flex-col gap-2 pb-2">
-          <p className="text-sm text-texto-tenue">No tienen hora, o su fin queda antes del inicio. Corrígelas para que entren a la agenda.</p>
+          <p className="text-sm text-texto-tenue">Les falta algo para tener su lugar en la agenda. Ábrelas para corregirlo.</p>
           {sinHora.map((sesion) => (
             <button
               key={sesion.id}
@@ -210,7 +221,7 @@ function Agenda({ datos }: { datos: DatosDelEvento }): ReactElement {
             >
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-[15px] font-medium">{sesion.titulo}</span>
-                <span className="truncate text-sm text-texto-tenue">{sesion.ponente}</span>
+                <span className="truncate text-sm [color:var(--tono-ambar-texto)]">{queLeFalta(sesion)}</span>
               </span>
               <Icono nombre="arrow_forward" className="text-lg" />
             </button>
