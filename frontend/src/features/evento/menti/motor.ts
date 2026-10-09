@@ -252,7 +252,7 @@ const CONVERSACION: readonly { patron: RegExp; responder: (datos: DatosDelEvento
     responder: (datos) => `Muy bien, gracias${nombreDeLaPersona === null ? '' : `, ${nombreDeLaPersona}`}. ¿Qué quieres saber de ${datos.evento.nombre}?`,
   },
   {
-    patron: /\b(como me llamo|sabes mi nombre|recuerdas mi nombre)\b/,
+    patron: /\b(com+o me llamo|cual es mi nombre|sabes mi nombre|recuerdas mi nombre|como me dicen)\b/,
     responder: () =>
       nombreDeLaPersona === null ? 'Todavía no me lo has dicho. ¿Cómo te llamas?' : `Te llamas ${nombreDeLaPersona}. ¿Seguimos con el evento?`,
   },
@@ -561,4 +561,18 @@ export async function responder(datos: DatosDelEvento, pregunta: string): Promis
 
 export function citaCorta(fragmento: Fragmento): string {
   return `${fragmento.ponente} · min. ${minuto(fragmento.segundo)}`
+}
+
+/*
+  La herramienta del agente (`agente.ts`): la misma búsqueda que usan las
+  respuestas sin modelo, con la consulta que el modelo decidió y, si la
+  limitó, solo en la charla de un ponente.
+*/
+export async function buscarParaElAgente(datos: DatosDelEvento, consulta: string, ponente: string): Promise<Fragmento[]> {
+  const nombrados = ponente.trim() === '' ? [] : ponentesNombrados(datos, ponente)
+  const alcance =
+    nombrados.length === 0
+      ? null
+      : datos.ponencias.filter((ponencia) => nombrados.some((nombre) => mismoPonente(ponencia.ponente, nombre))).map((ponencia) => ponencia.id)
+  return buscar(datos, gruposDe(terminos(consulta)), alcance, 6)
 }

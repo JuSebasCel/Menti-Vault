@@ -7,6 +7,7 @@ import { minuto } from '../formato'
 import type { DatosDelEvento, Evidencia } from '../tipos'
 import { agregarPregunta, completarRespuesta, marcarLeida, nuevaConversacion, useConversacion } from './conversacion'
 import type { Mensaje } from './conversacion'
+import { responderConAgente } from './agente'
 import { LogoDeMenti } from './LogoDeMenti'
 import { prepararIndice, responder } from './motor'
 import type { Fragmento, Respuesta } from './motor'
@@ -61,9 +62,15 @@ export function ChatDeMenti({ datos, alCerrar }: { datos: DatosDelEvento; alCerr
       return
     }
     setTexto('')
+    const historial = mensajes
     const id = agregarPregunta(limpia)
-    /* Una espera mínima: una respuesta instantánea parece copiada, no leída. */
-    const [respuesta] = await Promise.all([responder(datos, limpia), new Promise((resolver) => window.setTimeout(resolver, 1100))])
+    /*
+      Primero el agente, con el modelo; si el backend no responde, el motor
+      sin modelo. Una espera mínima: una respuesta instantánea parece
+      copiada, no leída.
+    */
+    const conModelo = async (): Promise<Respuesta> => (await responderConAgente(datos, historial, limpia)) ?? (await responder(datos, limpia))
+    const [respuesta] = await Promise.all([conModelo(), new Promise((resolver) => window.setTimeout(resolver, 900))])
     completarRespuesta(id, respuesta)
   }
 
@@ -261,7 +268,7 @@ function RespuestaDeMenti({
 
   return (
     <>
-      <p className="text-[15px] leading-relaxed">
+      <p className="text-[15px] leading-relaxed whitespace-pre-line">
         {palabras.slice(0, visibles).join(' ')}
         {escrita ? null : <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-texto" />}
       </p>
