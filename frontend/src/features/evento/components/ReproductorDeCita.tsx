@@ -56,6 +56,9 @@ export function ReproductorDeCita({
       elemento.addEventListener(
         'loadedmetadata',
         () => {
+          if (!vigente) {
+            return
+          }
           elemento.currentTime = inicio
           void elemento.play().then(
             () => setEstado('sonando'),
@@ -67,9 +70,19 @@ export function ReproductorDeCita({
       elemento.src = url
       elemento.load()
     })
+    /*
+      Al cerrar se suelta la fuente, no solo se pausa: si los metadatos
+      llegaban después, el `play()` sonaba en un elemento ya desmontado, que
+      nadie podía parar, encima del reproductor que se abría a continuación.
+      Era el audio doble.
+    */
     return () => {
       vigente = false
-      elemento?.pause()
+      if (elemento !== null) {
+        elemento.pause()
+        elemento.removeAttribute('src')
+        elemento.load()
+      }
     }
   }, [idDueno, evidencia.idConferencia, inicio])
 

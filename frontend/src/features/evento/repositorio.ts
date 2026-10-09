@@ -210,10 +210,47 @@ export async function cargarEvento(nombre: string): Promise<ResultadoDeConsulta<
   }
 }
 
-/* Dirección firmada de un archivo del evento (memoria en PDF, documento, audio). */
-export async function direccionDeArchivo(ruta: string): Promise<string | null> {
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, VIGENCIA_DE_LA_FIRMA_S)
-  return data?.signedUrl ?? null
+/*
+  Dirección firmada de un archivo del evento (memoria en PDF, documento,
+  audio, miniatura).
+
+  Se recuerda mientras la firma vale, y las que se piden en el mismo instante
+  salen en una sola llamada. Las portadas de Memorias tardaban porque cada una
+  hacía su viaje para firmar y, peor, recibía una dirección nueva en cada
+  visita: el navegador no podía reutilizar la imagen que ya tenía.
+*/
+const firmas = new Map<string, { promesa: Promise<string | null>; vence: number }>()
+let pendientes = new Map<string, (url: string | null) => void>()
+
+async function firmarPendientes(): Promise<void> {
+  const lote = pendientes
+  pendientes = new Map()
+  const rutas = [...lote.keys()]
+  const { data } = await supabase.storage.from(BUCKET).createSignedUrls(rutas, VIGENCIA_DE_LA_FIRMA_S)
+  for (const ruta of rutas) {
+    const firmada = data?.find((una) => una.path === ruta)
+    const url = firmada === undefined || firmada.error !== null || firmada.signedUrl === '' ? null : firmada.signedUrl
+    if (url === null) {
+      firmas.delete(ruta)
+    }
+    lote.get(ruta)?.(url)
+  }
+}
+
+export function direccionDeArchivo(ruta: string): Promise<string | null> {
+  const recordada = firmas.get(ruta)
+  if (recordada !== undefined && recordada.vence > Date.now()) {
+    return recordada.promesa
+  }
+  const promesa = new Promise<string | null>((resolver) => {
+    if (pendientes.size === 0) {
+      queueMicrotask(() => void firmarPendientes())
+    }
+    pendientes.set(ruta, resolver)
+  })
+  /* Se da por vencida un minuto antes, para no entregar una firma que caduque mientras se usa. */
+  firmas.set(ruta, { promesa, vence: Date.now() + (VIGENCIA_DE_LA_FIRMA_S - 60) * 1000 })
+  return promesa
 }
 
 const transcripciones = new Map<string, readonly Segmento[]>()

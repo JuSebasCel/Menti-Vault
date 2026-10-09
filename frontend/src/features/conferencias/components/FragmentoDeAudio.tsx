@@ -104,6 +104,18 @@ export function FragmentoDeAudio({ idDueno, idConferencia, inicio, fin }: PropsF
     return () => cancelAnimationFrame(cuadro)
   }, [estado, desde, hasta])
 
+  /* Al desmontar se suelta la fuente: un audio fuera del documento sigue sonando y ya nadie lo puede parar. */
+  useEffect(() => {
+    const elemento = audio.current
+    return () => {
+      if (elemento !== null) {
+        elemento.pause()
+        elemento.removeAttribute('src')
+        elemento.load()
+      }
+    }
+  }, [])
+
   async function alternar(): Promise<void> {
     const elemento = audio.current
     if (elemento === null) {
@@ -116,9 +128,17 @@ export function FragmentoDeAudio({ idDueno, idConferencia, inicio, fin }: PropsF
       return
     }
 
+    if (estado === 'cargando') {
+      return
+    }
+
     if (elemento.src === '') {
       setEstado('cargando')
       const url = await urlDelAudio(idDueno, idConferencia)
+      /* Si mientras se pedía la dirección se cerró la ficha, no se arranca en un elemento desmontado. */
+      if (!elemento.isConnected) {
+        return
+      }
       if (url === null) {
         setEstado('sin-audio')
         return

@@ -1,41 +1,36 @@
 import type { ReactElement } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { Modal } from '@/shared/ui'
 import { useSession } from '@/features/auth/session'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
-import { MiniaturaDeFoto, useFotos } from '../components/GaleriaDeFotos'
 import { EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { ESTADO_DE_PUBLICACION, RED, fecha, fechaYHora, mismoPonente } from '../formato'
-import { carpetaDeFotosDeSesion, carpetaDeFotosDelEvento, crearPublicacion, eliminarFoto, listarFotos, subirFoto } from '../repositorio'
-import type { Foto } from '../repositorio'
+import { CONSENTIMIENTO, ESTADO_DE_PUBLICACION, RED, fecha, fechaYHora, mismoPonente } from '../formato'
+import { crearPublicacion } from '../repositorio'
 import { useEvento } from '../useEvento'
-import type { DatosDelEvento, Ponencia, Publicacion } from '../tipos'
+import type { DatosDelEvento, Publicacion } from '../tipos'
 
 /*
   Lo que sale en las redes del evento.
 
   Arriba, publicaciones recomendadas armadas con el material que hay: el
-  primer día con una foto del evento, el agradecimiento a los ponentes, y una
-  por sesión con su foto y una cita del ponente ya verificada en los
-  artículos. Las fotos en sí quedan escondidas detrás de "Ver fotos": son
-  material de trabajo, no el centro de la pantalla. Abajo, las piezas ya
+  primer día, el agradecimiento a los ponentes, y una por sesión con una
+  cita del ponente ya verificada en los artículos. Abajo, las piezas ya
   preparadas, por día.
 
   Todo respeta la autorización: de quien no autorizó difundir en redes, o
-  todavía no respondió, no se propone nada, no se le nombra y sus fotos no
-  se usan.
+  todavía no respondió, no se propone nada ni se le nombra. Quiénes son se
+  consulta desde el encabezado, no en una franja fija: es una nota de
+  trabajo, no lo primero que hay que leer.
 */
 export function PantallaPublicaciones(): ReactElement {
   return <CargaDelEvento>{(datos) => <Redes datos={datos} />}</CargaDelEvento>
 }
 
-type FotoDelCarrusel = { readonly foto: Foto; readonly sesion: Ponencia | null }
-
 type Recomendada = {
   readonly id: string
   readonly titulo: string
   readonly texto: string
-  readonly foto: Foto | null
   readonly cita: string
   readonly ponente: string
   readonly idConferencia: string | null
@@ -51,13 +46,8 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [red, setRed] = useState('todas')
   const [estado, setEstado] = useState('todos')
   const idDueno = usuario?.id ?? ''
-  const carpetaDelEvento = carpetaDeFotosDelEvento(idDueno, datos.evento.nombre)
-  const { fotos: fotosDelEvento, recargar } = useFotos(carpetaDelEvento)
-  const [fotosPorSesion, setFotosPorSesion] = useState<Record<string, readonly Foto[]>>({})
-  const [viendoFotos, setViendoFotos] = useState(false)
-  const [subiendo, setSubiendo] = useState(false)
-  const entrada = useRef<HTMLInputElement>(null)
-
+  const [viendoPermisos, setViendoPermisos] = useState(false)
+  const botonPermisos = useRef<HTMLButtonElement>(null)
   const conRedes = useMemo(
     () => datos.ponentes.filter((ponente) => ponente.consentimiento === 'aceptado' && ponente.usos.redes === true),
     [datos.ponentes],
@@ -68,43 +58,8 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
       !(ponente.consentimiento === 'aceptado' && ponente.usos.redes === true),
   )
 
-  useEffect(() => {
-    let vigente = true
-    const autorizadas = datos.ponencias.filter((ponencia) => conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre)))
-    void Promise.all(
-      autorizadas.map(async (ponencia) => [ponencia.id, await listarFotos(carpetaDeFotosDeSesion(ponencia.idDueno, ponencia.id))] as const),
-    ).then((pares) => {
-      if (vigente) {
-        setFotosPorSesion(Object.fromEntries(pares))
-      }
-    })
-    return () => {
-      vigente = false
-    }
-  }, [datos.ponencias, conRedes])
-
-  /* Quitar una foto se ve en el acto: la del evento se vuelve a listar y la de una sesión se saca del estado, sin volver a pedir todas. */
-  const quitarFoto = async (item: FotoDelCarrusel): Promise<void> => {
-    await eliminarFoto(item.foto.ruta)
-    if (item.sesion === null) {
-      await recargar()
-      return
-    }
-    const idSesion = item.sesion.id
-    setFotosPorSesion((antes) => ({ ...antes, [idSesion]: (antes[idSesion] ?? []).filter((foto) => foto.ruta !== item.foto.ruta) }))
-  }
-
-  const carrusel: FotoDelCarrusel[] = useMemo(
-    () => [
-      ...(fotosDelEvento ?? []).map((foto) => ({ foto, sesion: null })),
-      ...datos.ponencias.flatMap((ponencia) => (fotosPorSesion[ponencia.id] ?? []).map((foto) => ({ foto, sesion: ponencia }))),
-    ],
-    [fotosDelEvento, fotosPorSesion, datos.ponencias],
-  )
-
   const recomendadas = useMemo((): Recomendada[] => {
     const evento = datos.evento.nombre
-    const fotosEvento = fotosDelEvento ?? []
     const lista: Recomendada[] = []
     const dias = [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort()
     const primerDia = datos.ponencias
@@ -122,7 +77,6 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
         texto: `Así arrancó ${evento}. Abrimos con «${apertura.titulo}»${
           siguientes.length > 0 ? ` y seguimos con ${listaConY(siguientes)}` : ''
         }. Gracias a quienes nos acompañaron en esta primera jornada.`,
-        foto: fotosEvento[0] ?? null,
         cita: '',
         ponente: '',
         idConferencia: null,
@@ -132,41 +86,26 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
       id: 'gracias',
       titulo: 'Agradecer a todos los ponentes',
       texto: `Gracias a quienes hicieron posible ${evento}. A ${listaConY(conRedes.map((ponente) => ponente.nombre))}, por compartir lo que saben y abrir conversaciones que nos llevamos para seguir pensando.`,
-      foto: fotosEvento[1] ?? fotosEvento[0] ?? null,
       cita: '',
       ponente: '',
       idConferencia: null,
     })
     for (const ponencia of datos.ponencias) {
-      const foto = fotosPorSesion[ponencia.id]?.[0]
-      if (foto === undefined) {
+      const cita = datos.producciones.flatMap((produccion) => produccion.evidencias).find((evidencia) => evidencia.idConferencia === ponencia.id)
+      if (cita === undefined || !conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre))) {
         continue
       }
-      const cita = datos.producciones.flatMap((produccion) => produccion.evidencias).find((evidencia) => evidencia.idConferencia === ponencia.id)
       lista.push({
         id: ponencia.id,
         titulo: `Agradecer a ${ponencia.ponente}`,
-        texto:
-          cita === undefined
-            ? `Gracias, ${ponencia.ponente}, por «${ponencia.titulo}» en ${evento}.`
-            : `«${cita.texto}» — ${ponencia.ponente} en ${evento}. Gracias por «${ponencia.titulo}».`,
-        foto,
-        cita: cita?.texto ?? '',
+        texto: `«${cita.texto}» — ${ponencia.ponente} en ${evento}. Gracias por «${ponencia.titulo}».`,
+        cita: cita.texto,
         ponente: ponencia.ponente,
         idConferencia: ponencia.id,
       })
     }
     return lista
-  }, [datos, conRedes, fotosDelEvento, fotosPorSesion])
-
-  const subir = async (lista: FileList): Promise<void> => {
-    setSubiendo(true)
-    for (const archivo of [...lista]) {
-      await subirFoto(carpetaDelEvento, archivo)
-    }
-    setSubiendo(false)
-    await recargar()
-  }
+  }, [datos, conRedes])
 
   const visibles = datos.publicaciones.filter(
     (publicacion) => (red === 'todas' || publicacion.red === red) && (estado === 'todos' || publicacion.estado === estado),
@@ -183,15 +122,17 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Redes">
-        <button
-          type="button"
-          onClick={() => setViendoFotos(!viendoFotos)}
-          aria-expanded={viendoFotos}
-          className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--mind-neutro)] px-4 text-sm font-medium transition-colors hover:bg-[var(--mind-variante)]"
-        >
-          <Icono nombre="photo_library" className="text-lg" />
-          {viendoFotos ? 'Ocultar fotos' : `Ver fotos (${carrusel.length})`}
-        </button>
+        {sinPermiso.length === 0 ? null : (
+          <button
+            ref={botonPermisos}
+            type="button"
+            onClick={() => setViendoPermisos(true)}
+            className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--tono-ambar)] px-4 text-sm font-medium [color:var(--tono-ambar-texto)] transition-opacity hover:opacity-85"
+          >
+            <Icono nombre="shield_person" className="text-lg" />
+            {sinPermiso.length} sin permiso para redes
+          </button>
+        )}
         <Filtros
           grupos={[
             {
@@ -223,62 +164,31 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
             },
           ]}
         />
-        <input
-          ref={entrada}
-          type="file"
-          hidden
-          multiple
-          accept="image/png,image/jpeg,image/webp"
-          onChange={(evento) => {
-            if (evento.target.files !== null && evento.target.files.length > 0) {
-              void subir(evento.target.files)
-            }
-            evento.target.value = ''
-          }}
-        />
       </EncabezadoDePagina>
 
-      {sinPermiso.length === 0 ? null : (
-        <div className="flex items-center gap-3 rounded-[20px] bg-[var(--tono-ambar)] px-5 py-3 [color:var(--tono-ambar-texto)]">
-          <Icono nombre="shield_person" className="text-xl" />
-          <span className="text-sm">
-            Sin piezas ni fotos de {listaConY(sinPermiso.map((ponente) => ponente.nombre))}: no{' '}
-            {sinPermiso.length === 1 ? 'autorizó' : 'autorizaron'} difundir en redes o no {sinPermiso.length === 1 ? 'ha' : 'han'} respondido.
-          </span>
-        </div>
-      )}
-
-      {/* Las fotos, escondidas hasta pedirlas. */}
-      {viendoFotos ? (
-        <Tarjeta className="entrar-escalonado p-3">
-          <ul className="flex snap-x gap-2 overflow-x-auto pb-1">
-            {carrusel.map((item) => (
-              <li key={item.foto.ruta} className="group relative flex w-36 shrink-0 snap-start flex-col gap-1.5">
-                <MiniaturaDeFoto ruta={item.foto.ruta} className="aspect-square rounded-[16px]" />
-                <button
-                  type="button"
-                  aria-label="Quitar foto"
-                  onClick={() => void quitarFoto(item)}
-                  className="absolute top-2 right-2 flex size-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                >
-                  <Icono nombre="delete" className="text-lg" />
-                </button>
-                <span className="truncate px-1 text-xs font-medium">{item.sesion === null ? datos.evento.nombre : item.sesion.ponente}</span>
+      <Modal
+        abierto={viendoPermisos}
+        alCerrar={() => setViendoPermisos(false)}
+        titulo="Sin permiso para redes"
+        anclaje="disparador"
+        anclaEn={botonPermisos}
+        ancho="normal"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm leading-relaxed text-texto-tenue">
+            De estas personas no se propone ninguna pieza ni se las nombra: no autorizaron difundir en redes o todavía no han respondido.
+          </p>
+          <ul className="flex flex-col gap-1">
+            {sinPermiso.map((ponente) => (
+              <li key={ponente.id} className="flex items-center justify-between gap-3 rounded-[16px] bg-[var(--mind-neutro)] px-4 py-3">
+                <span className="truncate font-medium">{ponente.nombre}</span>
+                {/* Quien autorizó otros usos pero no redes no puede salir como "Autorizó": es justo lo que no hizo. */}
+                <Estado {...(ponente.consentimiento === 'aceptado' ? { etiqueta: 'No autorizó redes', tono: 'rojo' as const } : CONSENTIMIENTO[ponente.consentimiento])} />
               </li>
             ))}
-            <li className="w-36 shrink-0">
-              <button
-                type="button"
-                onClick={() => entrada.current?.click()}
-                className="flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-[16px] border-2 border-dashed border-filete-fuerte text-sm text-texto-tenue transition-colors hover:bg-panel"
-              >
-                <Icono nombre="add_photo_alternate" className="text-2xl" />
-                {subiendo ? 'Subiendo…' : 'Añadir'}
-              </button>
-            </li>
           </ul>
-        </Tarjeta>
-      ) : null}
+        </div>
+      </Modal>
 
       <section className="flex flex-col gap-2">
         <h2 className="px-1 text-2xl font-medium">Recomendadas</h2>
@@ -287,10 +197,6 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
             <TarjetaRecomendada
               key={recomendada.id}
               recomendada={recomendada}
-              alPedirFoto={() => {
-                setViendoFotos(true)
-                entrada.current?.click()
-              }}
               alAnadir={async () => {
                 const resultado = await crearPublicacion(idDueno, datos.evento.nombre, {
                   red: 'instagram',
@@ -329,28 +235,14 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
 function TarjetaRecomendada({
   recomendada,
   alAnadir,
-  alPedirFoto,
 }: {
   recomendada: Recomendada
   alAnadir: () => Promise<boolean>
-  alPedirFoto: () => void
 }): ReactElement {
   const [anadida, setAnadida] = useState(false)
   const [copiado, setCopiado] = useState(false)
   return (
     <Tarjeta className="flex gap-4 p-4">
-      {recomendada.foto === null ? (
-        <button
-          type="button"
-          onClick={alPedirFoto}
-          aria-label="Añadir una foto"
-          className="flex size-24 shrink-0 cursor-pointer items-center justify-center rounded-[16px] border-2 border-dashed border-filete-fuerte text-texto-tenue transition-colors hover:bg-panel"
-        >
-          <Icono nombre="add_photo_alternate" className="text-2xl" />
-        </button>
-      ) : (
-        <MiniaturaDeFoto ruta={recomendada.foto.ruta} className="size-24 shrink-0 rounded-[16px]" />
-      )}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <span className="flex items-center gap-2">
           <Icono nombre="auto_awesome" className="text-base [color:var(--tono-violeta-texto)]" />
