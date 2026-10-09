@@ -10,7 +10,8 @@ import { PanelLateral } from '../components/PanelLateral'
 import { SelectorDeHora } from '../components/SelectorDeHora'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono } from '../components/piezas'
 import { MOMENTO, fecha, minutosEntre, momentoDe, sumarMinutos } from '../formato'
-import { actualizarSesion, crearSesion, eliminarSesion } from '../repositorio'
+import { actualizarSesion, crearPonenteInvitado, crearSesion, eliminarSesion } from '../repositorio'
+import { SelectorDePonente, ponenteNuevo } from '../components/SelectorDePonente'
 import type { CambiosDeSesion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Ponencia, TipoDeSesion } from '../tipos'
@@ -464,6 +465,14 @@ function FormularioDeSesion({
   const guardar = async (): Promise<void> => {
     setGuardando(true)
     setError(null)
+    if (ponenteNuevo(datos.ponentes, cambios.ponente)) {
+      const creado = await crearPonenteInvitado(datos.evento.id, cambios.ponente.trim(), '', [])
+      if (!creado.ok) {
+        setGuardando(false)
+        setError(mensajeDeError(creado.codigo))
+        return
+      }
+    }
     const resultado =
       inicial === null ? await crearSesion(usuario?.id ?? '', datos.evento.nombre, cambios) : await actualizarSesion(inicial.id, cambios)
     setGuardando(false)
@@ -505,13 +514,7 @@ function FormularioDeSesion({
       </Bloque>
 
       <Bloque titulo="Quién">
-        <div className="flex flex-wrap gap-2">
-          {datos.ponentes.map((ponente) => (
-            <Chip key={ponente.id} elegido={cambios.ponente === ponente.nombre} onClick={() => poner('ponente', ponente.nombre)}>
-              {ponente.nombre}
-            </Chip>
-          ))}
-        </div>
+        <SelectorDePonente ponentes={datos.ponentes} valor={cambios.ponente} alCambiar={(nombre) => poner('ponente', nombre)} />
       </Bloque>
 
       <Bloque titulo="Cuándo">

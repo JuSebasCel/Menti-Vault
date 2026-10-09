@@ -6,7 +6,8 @@ import { mensajeDeError } from '@/shared/errors'
 import { enDemostracion } from '../demostracion'
 import { esVideo, extraerAudio } from '../extraerAudio'
 import { fecha, sumarMinutos } from '../formato'
-import { carpetaDeFotosDeSesion, crearSesion, subirFoto, subirGrabacion } from '../repositorio'
+import { carpetaDeFotosDeSesion, crearPonenteInvitado, crearSesion, subirFoto, subirGrabacion } from '../repositorio'
+import { SelectorDePonente, ponenteNuevo } from './SelectorDePonente'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento } from '../tipos'
 import { BotonMind, Chip, Icono } from './piezas'
@@ -102,6 +103,13 @@ export function AsistenteDeGrabacion({
     try {
       let id = idSesion
       if (nueva) {
+        if (ponenteNuevo(datos.ponentes, sesionNueva.ponente)) {
+          setFase('Agregando al ponente…')
+          const creado = await crearPonenteInvitado(datos.evento.id, sesionNueva.ponente.trim(), '', [])
+          if (!creado.ok) {
+            throw new Error(mensajeDeError(creado.codigo))
+          }
+        }
         setFase('Creando la sesión en la agenda…')
         const creada = await crearSesion(usuario.id, datos.evento.nombre, {
           titulo: sesionNueva.titulo.trim(),
@@ -379,13 +387,7 @@ function SesionNueva({
           className="h-12 rounded-2xl bg-fondo px-4 text-base outline-none shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)]"
         />
       </label>
-      <div className="flex flex-wrap gap-2">
-        {datos.ponentes.map((ponente) => (
-          <Chip key={ponente.id} elegido={valores.ponente === ponente.nombre} onClick={() => alCambiar({ ponente: ponente.nombre })}>
-            {ponente.nombre}
-          </Chip>
-        ))}
-      </div>
+      <SelectorDePonente ponentes={datos.ponentes} valor={valores.ponente} alCambiar={(nombre) => alCambiar({ ponente: nombre })} />
       <div className="flex flex-wrap gap-2">
         {dias.map((dia) => (
           <Chip key={dia} elegido={valores.fecha === dia} onClick={() => alCambiar({ fecha: dia })}>
