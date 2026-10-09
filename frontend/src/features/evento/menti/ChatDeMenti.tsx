@@ -9,6 +9,7 @@ import { agregarPregunta, completarRespuesta, marcarLeida, nuevaConversacion, us
 import type { Mensaje } from './conversacion'
 import { responderConAgente } from './agente'
 import { LogoDeMenti } from './LogoDeMenti'
+import { TextoConFormato } from './TextoConFormato'
 import { prepararIndice, responder } from './motor'
 import type { Fragmento, Respuesta } from './motor'
 
@@ -280,10 +281,10 @@ function RespuestaDeMenti({
           {respuesta.aviso}
         </span>
       )}
-      <p className="text-[15px] leading-relaxed whitespace-pre-line">
-        {palabras.slice(0, visibles).join(' ')}
-        {escrita ? null : <span className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-texto" />}
-      </p>
+      <div>
+        <TextoConFormato texto={palabras.slice(0, visibles).join(' ')} />
+        {escrita ? null : <span className="mt-1 inline-block h-4 w-0.5 animate-pulse bg-texto" />}
+      </div>
 
       {escrita && respuesta.puntos !== undefined && respuesta.puntos.length > 0 ? (
         <ol className="entrar-escalonado flex flex-col gap-2">
