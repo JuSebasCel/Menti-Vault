@@ -1,6 +1,6 @@
 export type Tono = 'verde' | 'ambar' | 'azul' | 'violeta' | 'rojo' | 'gris'
 
-import type { EstadoDeAprobacion, EstadoDeConsentimiento, Publicacion } from './tipos'
+import type { EstadoDeAprobacion, EstadoDeConsentimiento, Ponente, Publicacion, UsoDelConsentimiento } from './tipos'
 
 /*
   Cómo se dice cada estado en la interfaz y con qué tono de pastilla.
@@ -91,11 +91,51 @@ export function iniciales(nombre: string): string {
     .join('')
 }
 
-/* El nombre de la conferencia y el del directorio no siempre coinciden letra por letra ("Marisol Forero" / "Marisol Forero Cárdenas"). */
+/*
+  Los ponentes de una sesión. Una sesión puede tener varios, y se guardan en
+  el mismo campo separados por coma ("Ana Pérez, Luis Gómez"): así se leen
+  bien en cualquier sitio que ya enseñaba el campo, sin otra columna ni otra
+  tabla que mantener sincronizada.
+*/
+export function ponentesDe(campo: string): string[] {
+  return campo
+    .split(',')
+    .map((nombre) => nombre.trim())
+    .filter((nombre) => nombre !== '')
+}
+
+export function unirPonentes(nombres: readonly string[]): string {
+  return nombres.map((nombre) => nombre.trim()).filter((nombre) => nombre !== '').join(', ')
+}
+
+/*
+  Si alguien del directorio da esa sesión. El nombre de la sesión y el del
+  directorio no siempre coinciden letra por letra ("Marisol Forero" /
+  "Marisol Forero Cárdenas"), y con varios ponentes basta con que sea uno.
+*/
 export function mismoPonente(enLaPonencia: string, enElDirectorio: string): boolean {
   const normal = (texto: string): string => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
-  const [uno, otro] = [normal(enLaPonencia), normal(enElDirectorio)]
-  return uno.startsWith(otro) || otro.startsWith(uno)
+  const otro = normal(enElDirectorio)
+  return ponentesDe(enLaPonencia).some((nombre) => {
+    const uno = normal(nombre)
+    return uno.startsWith(otro) || otro.startsWith(uno)
+  })
+}
+
+/*
+  Si todos los ponentes de una sesión autorizaron un uso. Con uno solo que
+  no lo haya hecho —o que no esté en el directorio— la sesión no entra: su
+  voz va en la misma grabación y no se puede separar de la de los demás.
+*/
+export function autorizanTodos(campo: string, directorio: readonly Ponente[], uso: UsoDelConsentimiento): boolean {
+  const nombres = ponentesDe(campo)
+  return (
+    nombres.length > 0 &&
+    nombres.every((nombre) => {
+      const ponente = directorio.find((uno) => mismoPonente(nombre, uno.nombre))
+      return ponente?.consentimiento === 'aceptado' && ponente.usos[uso] === true
+    })
+  )
 }
 
 /* Aritmética de horas `HH:MM` de la agenda, sin pasar por `Date` (que mete la zona horaria). */

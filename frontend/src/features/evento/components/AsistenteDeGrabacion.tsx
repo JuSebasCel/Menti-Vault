@@ -7,7 +7,7 @@ import { enDemostracion } from '../demostracion'
 import { esVideo, extraerAudio } from '../extraerAudio'
 import { fecha, sumarMinutos } from '../formato'
 import { carpetaDeFotosDeSesion, crearPonenteInvitado, crearSesion, subirFoto, subirGrabacion } from '../repositorio'
-import { SelectorDePonente, ponenteNuevo } from './SelectorDePonente'
+import { SelectorDePonente, ponentesNuevos } from './SelectorDePonente'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento } from '../tipos'
 import { BotonMind, Chip, Icono } from './piezas'
@@ -103,9 +103,9 @@ export function AsistenteDeGrabacion({
     try {
       let id = idSesion
       if (nueva) {
-        if (ponenteNuevo(datos.ponentes, sesionNueva.ponente)) {
-          setFase('Agregando al ponente…')
-          const creado = await crearPonenteInvitado(datos.evento.id, sesionNueva.ponente.trim(), '', [])
+        for (const nombre of ponentesNuevos(datos.ponentes, sesionNueva.ponente)) {
+          setFase(`Agregando a ${nombre}…`)
+          const creado = await crearPonenteInvitado(datos.evento.id, nombre, '', [])
           if (!creado.ok) {
             throw new Error(mensajeDeError(creado.codigo))
           }

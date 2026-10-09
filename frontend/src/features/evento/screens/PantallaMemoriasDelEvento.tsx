@@ -7,7 +7,7 @@ import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { Miniatura } from '../components/MiniaturaDeMemoria'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { fecha, fechaYHora, mismoPonente } from '../formato'
+import { autorizanTodos, fecha, fechaYHora, ponentesDe } from '../formato'
 import type { DatosDelEvento, Memoria, Ponencia } from '../tipos'
 
 /*
@@ -27,9 +27,9 @@ export function PantallaMemoriasDelEvento(): ReactElement {
 
 /* Lo que una ponencia necesita para entrar a una memoria, en el orden en que se resuelve. */
 function requisitos(ponencia: Ponencia, datos: DatosDelEvento): { texto: string; ok: boolean }[] {
-  const ponente = datos.ponentes.find((uno) => mismoPonente(ponencia.ponente, uno.nombre))
+  const varios = ponentesDe(ponencia.ponente).length > 1
   return [
-    { texto: 'Autorizada por su ponente', ok: ponente?.consentimiento === 'aceptado' && ponente.usos.memoria === true },
+    { texto: varios ? 'Autorizada por todos sus ponentes' : 'Autorizada por su ponente', ok: autorizanTodos(ponencia.ponente, datos.ponentes, 'memoria') },
   ]
 }
 

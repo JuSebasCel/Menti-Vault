@@ -16,9 +16,9 @@ import { CampoDeBusqueda, Filtros, normalizarBusqueda } from '../components/Filt
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { CONSENTIMIENTO, MOMENTO, duracion, fecha, fechaYHora, minuto, mismoPonente, momentoDe } from '../formato'
+import { CONSENTIMIENTO, MOMENTO, duracion, fecha, fechaYHora, minuto, mismoPonente, momentoDe, ponentesDe } from '../formato'
 import { USOS_DEL_CONSENTIMIENTO } from '../tipos'
-import type { DatosDelEvento, Ponencia, Segmento } from '../tipos'
+import type { DatosDelEvento, Ponencia, Ponente, Segmento } from '../tipos'
 
 /*
   Las ponencias del evento en una sola lista, como la tabla de pacientes de
@@ -578,11 +578,33 @@ function Transcripcion({ ponencia }: { ponencia: Ponencia }): ReactElement {
   hay pasos de revisión; solo qué autorizó y cuándo.
 */
 function Autorizacion({ ponencia, datos }: { ponencia: Ponencia; datos: DatosDelEvento }): ReactElement {
-  const ponente = datos.ponentes.find((uno) => mismoPonente(ponencia.ponente, uno.nombre))
+  const nombres = ponentesDe(ponencia.ponente)
+  if (nombres.length === 0) {
+    return (
+      <Tarjeta>
+        <p className="text-texto-tenue">Esta sesión todavía no tiene ponente.</p>
+      </Tarjeta>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {nombres.length > 1 ? (
+        <p className="px-1 text-sm text-texto-tenue">
+          Tiene {nombres.length} ponentes: para usarla en una memoria, en artículos o en redes, tienen que autorizarlo todos.
+        </p>
+      ) : null}
+      {nombres.map((nombre) => (
+        <AutorizacionDe key={nombre} nombre={nombre} ponente={datos.ponentes.find((uno) => mismoPonente(nombre, uno.nombre))} />
+      ))}
+    </div>
+  )
+}
+
+function AutorizacionDe({ nombre, ponente }: { nombre: string; ponente: Ponente | undefined }): ReactElement {
   if (ponente === undefined) {
     return (
       <Tarjeta>
-        <p className="text-texto-tenue">{ponencia.ponente} no está entre los ponentes del evento.</p>
+        <p className="text-texto-tenue">{nombre} no está entre los ponentes del evento.</p>
       </Tarjeta>
     )
   }
@@ -590,7 +612,10 @@ function Autorizacion({ ponencia, datos }: { ponencia: Ponencia; datos: DatosDel
   return (
     <Tarjeta className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-2xl">Tratamiento de datos</span>
+        <span className="flex flex-col">
+          <span className="text-2xl">{ponente.nombre}</span>
+          <span className="text-sm text-texto-tenue">Tratamiento de datos</span>
+        </span>
         <Estado {...CONSENTIMIENTO[ponente.consentimiento]} />
       </div>
       {respondio ? (

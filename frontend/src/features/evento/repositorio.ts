@@ -1,3 +1,4 @@
+import { ponentesDe, unirPonentes } from './formato'
 import { supabase } from '@/shared/supabase/cliente'
 import { enDemostracion, esperaDeDemostracion } from './demostracion'
 import { analizarEnSegundoPlano } from '@/features/conferencias/carga/segundoPlano'
@@ -358,9 +359,25 @@ export async function actualizarPonente(
     return { ok: false, codigo: codigoDeErrorDeSupabase(error) }
   }
   if (cambios.nombre !== ponente.nombre) {
-    const renombrado = await supabase.from('conferencias').update({ ponente: cambios.nombre }).eq('evento', evento).eq('ponente', ponente.nombre)
-    if (renombrado.error !== null) {
-      return { ok: false, codigo: codigoDeErrorDeSupabase(renombrado.error) }
+    /*
+      Una sesión puede tener varios ponentes en el mismo campo ("Ana, Luis"),
+      así que no basta con igualar el campo entero: se cambia el nombre
+      dentro de la lista de cada sesión donde aparece.
+    */
+    const { data: sesiones, error: errorAlLeer } = await supabase
+      .from('conferencias')
+      .select('id, ponente')
+      .eq('evento', evento)
+      .ilike('ponente', `%${ponente.nombre}%`)
+    if (errorAlLeer !== null) {
+      return { ok: false, codigo: codigoDeErrorDeSupabase(errorAlLeer) }
+    }
+    for (const sesion of (sesiones ?? []) as { id: string; ponente: string }[]) {
+      const nombres = ponentesDe(sesion.ponente).map((nombre) => (nombre === ponente.nombre ? cambios.nombre : nombre))
+      const renombrado = await supabase.from('conferencias').update({ ponente: unirPonentes(nombres) }).eq('id', sesion.id)
+      if (renombrado.error !== null) {
+        return { ok: false, codigo: codigoDeErrorDeSupabase(renombrado.error) }
+      }
     }
   }
   return { ok: true, datos: null }

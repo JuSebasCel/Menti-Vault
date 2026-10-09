@@ -11,7 +11,7 @@ import { SelectorDeHora } from '../components/SelectorDeHora'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono } from '../components/piezas'
 import { MOMENTO, fecha, minutosEntre, momentoDe, sumarMinutos } from '../formato'
 import { actualizarSesion, crearPonenteInvitado, crearSesion, eliminarSesion } from '../repositorio'
-import { SelectorDePonente, ponenteNuevo } from '../components/SelectorDePonente'
+import { SelectorDePonente, ponentesNuevos } from '../components/SelectorDePonente'
 import type { CambiosDeSesion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Ponencia, TipoDeSesion } from '../tipos'
@@ -567,8 +567,8 @@ function FormularioDeSesion({
   const guardar = async (): Promise<void> => {
     setGuardando(true)
     setError(null)
-    if (ponenteNuevo(datos.ponentes, cambios.ponente)) {
-      const creado = await crearPonenteInvitado(datos.evento.id, cambios.ponente.trim(), '', [])
+    for (const nombre of ponentesNuevos(datos.ponentes, cambios.ponente)) {
+      const creado = await crearPonenteInvitado(datos.evento.id, nombre, '', [])
       if (!creado.ok) {
         setGuardando(false)
         setError(mensajeDeError(creado.codigo))

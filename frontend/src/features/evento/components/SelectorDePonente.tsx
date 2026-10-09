@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { useId, useMemo, useState } from 'react'
 import { normalizarBusqueda } from './Filtros'
 import { Icono } from './piezas'
+import { mismoPonente, ponentesDe, unirPonentes } from '../formato'
 import type { Ponente } from '../tipos'
 
 /*
@@ -10,10 +11,15 @@ import type { Ponente } from '../tipos'
   ponentes: con treinta nombres había que leerlos uno por uno para encontrar
   el que se buscaba.
 
-  Si el nombre no existe todavía, se ofrece agregarlo ahí mismo: tener que ir
+  Una sesión puede tener varios ponentes (un panel, una charla a dos voces):
+  cada elegido queda como una ficha con su "x", y el campo sigue abierto
+  para el siguiente. Se guardan juntos en el campo de la sesión, separados
+  por coma (ver `ponentesDe`).
+
+  Si un nombre no existe todavía, se ofrece agregarlo ahí mismo: tener que ir
   a Ponentes, crearlo y volver a la sesión cortaba el flujo justo cuando se
-  estaba armando la agenda. El ponente nuevo se crea al guardar la sesión
-  (ver `ponenteNuevo`), sin correo, y su autorización se pide después.
+  estaba armando la agenda. Los nuevos se crean al guardar la sesión (ver
+  `ponentesNuevos`), sin correo, y su autorización se pide después.
 */
 export function SelectorDePonente({
   ponentes,
@@ -21,10 +27,12 @@ export function SelectorDePonente({
   alCambiar,
 }: {
   ponentes: readonly Ponente[]
+  /** Los nombres elegidos, separados por coma. */
   valor: string
-  alCambiar: (nombre: string) => void
+  alCambiar: (valor: string) => void
 }): ReactElement {
-  const [texto, setTexto] = useState(valor)
+  const elegidos = ponentesDe(valor)
+  const [texto, setTexto] = useState('')
   const [abierto, setAbierto] = useState(false)
   const [resaltado, setResaltado] = useState(0)
   const idLista = useId()
@@ -33,9 +41,10 @@ export function SelectorDePonente({
   const sugerencias = useMemo(
     () =>
       ponentes
+        .filter((ponente) => !elegidos.some((nombre) => mismoPonente(nombre, ponente.nombre)))
         .filter((ponente) => buscado === '' || normalizarBusqueda(`${ponente.nombre} ${ponente.institucion}`).includes(buscado))
         .slice(0, 6),
-    [ponentes, buscado],
+    [ponentes, buscado, elegidos],
   )
   const existe = ponentes.some((ponente) => normalizarBusqueda(ponente.nombre) === buscado)
   const opciones: { nombre: string; nuevo: boolean; detalle: string }[] = [
@@ -43,30 +52,48 @@ export function SelectorDePonente({
     ...(texto.trim() !== '' && !existe ? [{ nombre: texto.trim(), nuevo: true, detalle: 'Se agrega a Ponentes al guardar' }] : []),
   ]
 
-  const elegir = (nombre: string): void => {
-    setTexto(nombre)
-    alCambiar(nombre)
-    setAbierto(false)
+  const agregar = (nombre: string): void => {
+    alCambiar(unirPonentes([...elegidos, nombre.replace(/,/g, ' ')]))
+    setTexto('')
+    setResaltado(0)
   }
-
-  const esNuevo = valor.trim() !== '' && !ponentes.some((ponente) => normalizarBusqueda(ponente.nombre) === normalizarBusqueda(valor))
+  const quitar = (nombre: string): void => alCambiar(unirPonentes(elegidos.filter((otro) => otro !== nombre)))
 
   return (
     <div className="relative flex flex-col gap-1.5">
-      <span className="flex h-12 items-center gap-2 rounded-2xl bg-fondo px-4 shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] transition-shadow focus-within:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]">
+      <span className="flex min-h-12 flex-wrap items-center gap-1.5 rounded-2xl bg-fondo px-3 py-2 shadow-[0_0_0_1px_var(--bitacora-filete-fuerte)] transition-shadow focus-within:shadow-[0_0_0_3px_var(--mind-tonal),0_0_0_1px_var(--bitacora-filete-fuerte)]">
         <Icono nombre="person_search" relleno={false} className="text-xl text-texto-tenue" />
+        {elegidos.map((nombre) => {
+          const nuevo = ponenteNuevo(ponentes, nombre)
+          return (
+            <span
+              key={nombre}
+              className={`flex h-8 items-center gap-1 rounded-full pr-1 pl-3 text-sm font-medium ${nuevo ? 'bg-[var(--tono-azul)] [color:var(--tono-azul-texto)]' : 'bg-panel'}`}
+              title={nuevo ? 'Nuevo: se agrega a Ponentes al guardar' : undefined}
+            >
+              {nombre}
+              <button
+                type="button"
+                aria-label={`Quitar a ${nombre}`}
+                onClick={() => quitar(nombre)}
+                className="flex size-6 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-[var(--mind-variante)]"
+              >
+                <Icono nombre="close" className="text-sm" />
+              </button>
+            </span>
+          )
+        })}
         <input
           value={texto}
           role="combobox"
           aria-expanded={abierto}
           aria-controls={idLista}
           aria-autocomplete="list"
-          placeholder="Escribe el nombre del ponente"
+          placeholder={elegidos.length === 0 ? 'Escribe el nombre del ponente' : 'Añadir otro ponente'}
           onFocus={() => setAbierto(true)}
           onBlur={() => window.setTimeout(() => setAbierto(false), 120)}
           onChange={(evento) => {
             setTexto(evento.target.value)
-            alCambiar(evento.target.value)
             setResaltado(0)
             setAbierto(true)
           }}
@@ -77,14 +104,15 @@ export function SelectorDePonente({
             } else if (evento.key === 'ArrowUp') {
               evento.preventDefault()
               setResaltado((antes) => Math.max(antes - 1, 0))
-            } else if (evento.key === 'Enter' && abierto && opciones[resaltado] !== undefined) {
+            } else if (evento.key === 'Enter' && opciones[resaltado] !== undefined) {
               evento.preventDefault()
-              elegir(opciones[resaltado].nombre)
+              agregar(opciones[resaltado].nombre)
+            } else if (evento.key === 'Backspace' && texto === '' && elegidos.length > 0) {
+              quitar(elegidos[elegidos.length - 1] ?? '')
             }
           }}
-          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-texto-tenue"
+          className="h-8 min-w-40 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-texto-tenue"
         />
-        {esNuevo ? <span className="shrink-0 rounded-full bg-[var(--tono-azul)] px-2.5 py-1 text-xs font-medium [color:var(--tono-azul-texto)]">Nuevo</span> : null}
       </span>
 
       {abierto && opciones.length > 0 ? (
@@ -99,7 +127,7 @@ export function SelectorDePonente({
                 type="button"
                 onMouseDown={(evento) => evento.preventDefault()}
                 onMouseEnter={() => setResaltado(indice)}
-                onClick={() => elegir(opcion.nombre)}
+                onClick={() => agregar(opcion.nombre)}
                 className={`flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-3 py-2.5 text-left ${indice === resaltado ? 'bg-panel' : ''}`}
               >
                 <Icono nombre={opcion.nuevo ? 'person_add' : 'person'} className="text-xl text-texto-tenue" />
@@ -116,7 +144,12 @@ export function SelectorDePonente({
   )
 }
 
-/* Si el nombre elegido no es de ningún ponente del evento: hay que crearlo antes de guardar la sesión. */
+/* Si un nombre no es de ningún ponente del evento: hay que crearlo antes de guardar la sesión. */
 export function ponenteNuevo(ponentes: readonly Ponente[], nombre: string): boolean {
   return nombre.trim() !== '' && !ponentes.some((ponente) => normalizarBusqueda(ponente.nombre) === normalizarBusqueda(nombre))
+}
+
+/* Los nombres de la sesión que todavía no están en el directorio. */
+export function ponentesNuevos(ponentes: readonly Ponente[], campo: string): string[] {
+  return ponentesDe(campo).filter((nombre) => ponenteNuevo(ponentes, nombre))
 }

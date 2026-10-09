@@ -5,7 +5,7 @@ import { useSession } from '@/features/auth/session'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { CONSENTIMIENTO, ESTADO_DE_PUBLICACION, RED, fecha, fechaYHora, mismoPonente } from '../formato'
+import { CONSENTIMIENTO, ESTADO_DE_PUBLICACION, RED, autorizanTodos, fecha, fechaYHora, mismoPonente } from '../formato'
 import { crearPublicacion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Publicacion } from '../tipos'
@@ -68,7 +68,7 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
     const apertura = primerDia[0]
     const siguientes = primerDia
       .slice(1)
-      .filter((ponencia) => conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre)))
+      .filter((ponencia) => autorizanTodos(ponencia.ponente, datos.ponentes, 'redes'))
       .map((ponencia) => ponencia.ponente)
     if (apertura !== undefined) {
       lista.push({
@@ -92,7 +92,7 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
     })
     for (const ponencia of datos.ponencias) {
       const cita = datos.producciones.flatMap((produccion) => produccion.evidencias).find((evidencia) => evidencia.idConferencia === ponencia.id)
-      if (cita === undefined || !conRedes.some((ponente) => mismoPonente(ponencia.ponente, ponente.nombre))) {
+      if (cita === undefined || !autorizanTodos(ponencia.ponente, datos.ponentes, 'redes')) {
         continue
       }
       lista.push({
