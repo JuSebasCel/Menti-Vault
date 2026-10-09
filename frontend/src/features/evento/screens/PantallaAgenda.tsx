@@ -14,6 +14,7 @@ import { actualizarEvento, actualizarSesion, crearPonenteInvitado, crearSesion, 
 import { SelectorDePonente, ponentesNuevos } from '../components/SelectorDePonente'
 import type { CambiosDeSesion } from '../repositorio'
 import { useEvento } from '../useEvento'
+import { hoyEnIso } from '@/shared/ui/Calendario'
 import type { DatosDelEvento, Ponencia, TipoDeSesion } from '../tipos'
 
 /*
@@ -362,6 +363,8 @@ function VistaPorDias({
   sesiones: readonly Ponencia[]
   alAbrir: (ponencia: Ponencia, elemento: HTMLElement) => void
 }): ReactElement {
+  /* El día de hoy en gris, para ubicarse en la agenda de un vistazo. */
+  const hoy = hoyEnIso()
   const inicios = sesiones.map((sesion) => minutosDe(sesion.horaInicio) ?? 0)
   const fines = sesiones.map((sesion) => minutosDe(sesion.horaFin) ?? (minutosDe(sesion.horaInicio) ?? 0) + 60)
   const primeraHora = inicios.length === 0 ? 8 : Math.floor(Math.min(...inicios) / 60)
@@ -372,8 +375,11 @@ function VistaPorDias({
     <div className="entrar-escalonado grid gap-2" style={{ gridTemplateColumns: `56px repeat(${dias.length}, minmax(0, 1fr))` }}>
       <span />
       {dias.map((dia) => (
-        <div key={dia} className="flex h-10 items-center justify-center gap-2 text-sm text-texto">
-          <span className="capitalize">{DIA_DE_LA_SEMANA.format(new Date(`${dia}T12:00:00`))}</span>
+        <div
+          key={dia}
+          className={`flex h-10 items-center justify-center gap-2 rounded-full text-sm text-texto ${dia === hoy ? 'bg-[var(--mind-variante)] font-semibold' : ''}`}
+        >
+          <span className="capitalize">{dia === hoy ? 'Hoy' : DIA_DE_LA_SEMANA.format(new Date(`${dia}T12:00:00`))}</span>
           <span className="flex size-8 items-center justify-center rounded-full bg-acento text-sm font-semibold text-acento-contraste">
             {Number(dia.slice(8, 10))}
           </span>
@@ -392,7 +398,11 @@ function VistaPorDias({
         /* Cada columna es su propia capa (la anima la entrada), así que la que se mira sube entera para que su detalle no quede debajo de la vecina. */
         <div key={dia} className="relative hover:z-10" style={{ height: horas.length * ALTO_DE_HORA }}>
           {horas.map((hora, indice) => (
-            <div key={hora} className="absolute inset-x-0 rounded-[16px] bg-panel" style={{ top: indice * ALTO_DE_HORA + 2, height: ALTO_DE_HORA - 4 }} />
+            <div
+              key={hora}
+              className={`absolute inset-x-0 rounded-[16px] ${dia === hoy ? 'bg-[var(--mind-variante)]' : 'bg-panel'}`}
+              style={{ top: indice * ALTO_DE_HORA + 2, height: ALTO_DE_HORA - 4 }}
+            />
           ))}
           {sesiones
             .filter((sesion) => sesion.fecha === dia)
@@ -471,14 +481,17 @@ function VistaDeLista({
   sesiones: readonly Ponencia[]
   alAbrir: (ponencia: Ponencia, elemento: HTMLElement) => void
 }): ReactElement {
+  const hoy = hoyEnIso()
   return (
     <div className="entrar-escalonado flex flex-col gap-2">
       {dias
         .filter((dia) => sesiones.some((sesion) => sesion.fecha === dia))
         .map((dia) => (
-          <div key={dia} className="tarjeta-borde flex gap-6 rounded-[24px] p-4">
+          <div key={dia} className={`tarjeta-borde flex gap-6 rounded-[24px] p-4 ${dia === hoy ? 'bg-panel' : ''}`}>
             <div className="flex w-20 shrink-0 flex-col items-center gap-1 pt-1">
-              <span className="text-sm capitalize">{DIA_DE_LA_SEMANA.format(new Date(`${dia}T12:00:00`))}</span>
+              <span className={`text-sm capitalize ${dia === hoy ? 'font-semibold' : ''}`}>
+                {dia === hoy ? 'Hoy' : DIA_DE_LA_SEMANA.format(new Date(`${dia}T12:00:00`))}
+              </span>
               <span className="flex size-12 items-center justify-center rounded-full bg-acento text-xl font-semibold text-acento-contraste">
                 {Number(dia.slice(8, 10))}
               </span>
