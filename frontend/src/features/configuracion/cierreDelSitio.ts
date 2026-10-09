@@ -15,9 +15,11 @@ export type CierreDelSitio = {
   readonly cargando: boolean
   readonly cerrado: boolean
   readonly soyAdministracion: boolean
+  /* Una cuenta para presentar: entra con la app cerrada, pero no la abre ni la cierra (migración `cuentas_de_demostracion`). */
+  readonly soyDemostracion: boolean
 }
 
-let actual: CierreDelSitio = { cargando: true, cerrado: false, soyAdministracion: false }
+let actual: CierreDelSitio = { cargando: true, cerrado: false, soyAdministracion: false, soyDemostracion: false }
 const oyentes = new Set<() => void>()
 
 function publicar(siguiente: CierreDelSitio): void {
@@ -37,18 +39,20 @@ function suscribir(oyente: () => void): () => void {
 */
 async function leer(idUsuario: string): Promise<void> {
   try {
-    const [estado, administracion] = await Promise.all([
+    const [estado, administracion, demostracion] = await Promise.all([
       supabase.from('estado_del_sitio').select('cerrado').maybeSingle(),
       supabase.from('administradores').select('id_usuario').eq('id_usuario', idUsuario).maybeSingle(),
+      supabase.from('cuentas_de_demostracion').select('id_usuario').eq('id_usuario', idUsuario).maybeSingle(),
     ])
 
     publicar({
       cargando: false,
       cerrado: (estado?.data as { cerrado?: boolean } | null)?.cerrado === true,
       soyAdministracion: administracion?.data !== null && administracion?.data !== undefined,
+      soyDemostracion: demostracion?.data !== null && demostracion?.data !== undefined,
     })
   } catch {
-    publicar({ cargando: false, cerrado: false, soyAdministracion: false })
+    publicar({ cargando: false, cerrado: false, soyAdministracion: false, soyDemostracion: false })
   }
 }
 

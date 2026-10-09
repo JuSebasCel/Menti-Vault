@@ -44,6 +44,7 @@ function Ajustes(): ReactElement {
             </div>
           </Seccion>
 
+          {cierre.soyAdministracion ? (
           <Seccion titulo="Modo demostración" icono="slideshow">
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm text-texto-tenue">
@@ -61,6 +62,7 @@ function Ajustes(): ReactElement {
               </div>
             </div>
           </Seccion>
+          ) : null}
 
           {cierre.soyAdministracion ? (
             <Seccion titulo="Acceso a la app" icono="lock">

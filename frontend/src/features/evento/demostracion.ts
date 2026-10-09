@@ -10,7 +10,10 @@ import { useSyncExternalStore } from 'react'
   Solo afecta a lo que crea. Editar, borrar y subir fotos siguen siendo de
   verdad: son los cambios que quien presenta quiere ver reflejados.
 
-  Viene encendido y se recuerda en este navegador; se apaga en Ajustes.
+  Viene encendido y se recuerda en este navegador. Solo la administración
+  puede apagarlo en Ajustes: para cualquier otra cuenta —la de presentar,
+  sobre todo— está siempre puesto, y mientras no se sabe quién es, también,
+  porque equivocarse hacia ese lado no escribe nada.
 */
 const CLAVE = 'menti-modo-demostracion'
 const oyentes = new Set<() => void>()
@@ -23,20 +26,38 @@ function leer(): boolean {
   }
 }
 
-let activo = typeof window === 'undefined' ? true : leer()
+let elegido = typeof window === 'undefined' ? true : leer()
+let puedeElegir = false
+let activo = true
+
+function recalcular(): void {
+  const siguiente = puedeElegir ? elegido : true
+  if (siguiente !== activo) {
+    activo = siguiente
+    oyentes.forEach((oyente) => oyente())
+  }
+}
 
 export function enDemostracion(): boolean {
   return activo
 }
 
+export function permitirElegirDemostracion(permitido: boolean): void {
+  puedeElegir = permitido
+  recalcular()
+}
+
 export function cambiarDemostracion(siguiente: boolean): void {
-  activo = siguiente
+  if (!puedeElegir) {
+    return
+  }
+  elegido = siguiente
   try {
     window.localStorage.setItem(CLAVE, siguiente ? 'si' : 'no')
   } catch {
     // Sin almacenamiento se recuerda solo mientras dure la pestaña.
   }
-  oyentes.forEach((oyente) => oyente())
+  recalcular()
 }
 
 export function useDemostracion(): boolean {

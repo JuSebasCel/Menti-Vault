@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import type { ReactElement } from 'react'
 import { Outlet } from 'react-router'
 import { useSession } from '@/features/auth/session'
 import { useCierreDelSitio } from '@/features/configuracion/cierreDelSitio'
+import { permitirElegirDemostracion } from '@/features/evento/demostracion'
 import { MarcaDeMenti } from '@/shared/ui/Logo'
 
 /*
@@ -19,9 +21,13 @@ import { MarcaDeMenti } from '@/shared/ui/Logo'
 */
 export function CompuertaDelSitio(): ReactElement {
   const { usuario, cerrarSesion } = useSession()
-  const { cerrado, soyAdministracion } = useCierreDelSitio(usuario?.id ?? '')
+  const { cerrado, soyAdministracion, soyDemostracion } = useCierreDelSitio(usuario?.id ?? '')
 
-  if (!cerrado) {
+  /* Solo la administración decide si se trabaja en demostración; el resto la tiene siempre puesta. */
+  useEffect(() => permitirElegirDemostracion(soyAdministracion), [soyAdministracion])
+
+  /* La cuenta de demostración entra sin el aviso: quien mira la presentación no tiene por qué saber que la app está cerrada. */
+  if (!cerrado || soyDemostracion) {
     return <Outlet />
   }
 

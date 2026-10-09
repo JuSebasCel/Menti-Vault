@@ -6,7 +6,7 @@ import { Filtros } from '../components/Filtros'
 import { MiniaturaDeFoto, useFotos } from '../components/GaleriaDeFotos'
 import { EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
 import { ESTADO_DE_PUBLICACION, RED, fecha, fechaYHora, mismoPonente } from '../formato'
-import { carpetaDeFotosDeSesion, carpetaDeFotosDelEvento, crearPublicacion, listarFotos, subirFoto } from '../repositorio'
+import { carpetaDeFotosDeSesion, carpetaDeFotosDelEvento, crearPublicacion, eliminarFoto, listarFotos, subirFoto } from '../repositorio'
 import type { Foto } from '../repositorio'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento, Ponencia, Publicacion } from '../tipos'
@@ -82,6 +82,17 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
       vigente = false
     }
   }, [datos.ponencias, conRedes])
+
+  /* Quitar una foto se ve en el acto: la del evento se vuelve a listar y la de una sesión se saca del estado, sin volver a pedir todas. */
+  const quitarFoto = async (item: FotoDelCarrusel): Promise<void> => {
+    await eliminarFoto(item.foto.ruta)
+    if (item.sesion === null) {
+      await recargar()
+      return
+    }
+    const idSesion = item.sesion.id
+    setFotosPorSesion((antes) => ({ ...antes, [idSesion]: (antes[idSesion] ?? []).filter((foto) => foto.ruta !== item.foto.ruta) }))
+  }
 
   const carrusel: FotoDelCarrusel[] = useMemo(
     () => [
@@ -242,8 +253,16 @@ function Redes({ datos }: { datos: DatosDelEvento }): ReactElement {
         <Tarjeta className="entrar-escalonado p-3">
           <ul className="flex snap-x gap-2 overflow-x-auto pb-1">
             {carrusel.map((item) => (
-              <li key={item.foto.ruta} className="flex w-36 shrink-0 snap-start flex-col gap-1.5">
+              <li key={item.foto.ruta} className="group relative flex w-36 shrink-0 snap-start flex-col gap-1.5">
                 <MiniaturaDeFoto ruta={item.foto.ruta} className="aspect-square rounded-[16px]" />
+                <button
+                  type="button"
+                  aria-label="Quitar foto"
+                  onClick={() => void quitarFoto(item)}
+                  className="absolute top-2 right-2 flex size-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                >
+                  <Icono nombre="delete" className="text-lg" />
+                </button>
                 <span className="truncate px-1 text-xs font-medium">{item.sesion === null ? datos.evento.nombre : item.sesion.ponente}</span>
               </li>
             ))}

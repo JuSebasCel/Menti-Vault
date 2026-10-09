@@ -7,7 +7,8 @@ import { MaterialDeApoyo } from '../components/MaterialDeApoyo'
 import { AsistenteDeGrabacion } from '../components/AsistenteDeGrabacion'
 import { descargarPonencia } from '../descargarPonencia'
 import { Modal } from '@/shared/ui'
-import { carpetaDeFotosDeSesion, leerTranscripcion } from '../repositorio'
+import { carpetaDeFotosDeSesion, eliminarSesion, leerTranscripcion } from '../repositorio'
+import { useEvento } from '../useEvento'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
@@ -195,7 +196,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
       </div>
 
       <PanelLateral abierto={abierta !== null} alCerrar={() => ver(null)} origen={origen} titulo={abierta?.titulo ?? 'Ponencia'}>
-        {abierta === null ? null : <DetalleDePonencia key={abierta.id} ponencia={abierta} datos={datos} inicial={(parametros.get('pestana') as Pestana | null) ?? 'transcripcion'} />}
+        {abierta === null ? null : <DetalleDePonencia key={abierta.id} ponencia={abierta} datos={datos} alEliminar={() => ver(null)} inicial={(parametros.get('pestana') as Pestana | null) ?? 'transcripcion'} />}
       </PanelLateral>
 
       <Modal
@@ -220,8 +221,32 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
 
 type Pestana = 'transcripcion' | 'material' | 'memoria' | 'aprobacion'
 
-function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; datos: DatosDelEvento; inicial: Pestana }): ReactElement {
+function DetalleDePonencia({
+  ponencia,
+  datos,
+  inicial,
+  alEliminar,
+}: {
+  ponencia: Ponencia
+  datos: DatosDelEvento
+  inicial: Pestana
+  alEliminar: () => void
+}): ReactElement {
+  const { invalidar } = useEvento()
   const [pestana, setPestana] = useState<Pestana>(inicial)
+  const [confirmando, setConfirmando] = useState(false)
+  const [borrando, setBorrando] = useState(false)
+
+  /* Como en la agenda: es de verdad aun en demostración, porque borrar ya es una decisión explícita y confirmada. */
+  const borrar = async (): Promise<void> => {
+    setBorrando(true)
+    const resultado = await eliminarSesion(ponencia.id)
+    setBorrando(false)
+    if (resultado.ok) {
+      invalidar()
+      alEliminar()
+    }
+  }
   const [descargando, setDescargando] = useState<string | null>(null)
   const memoria = datos.memorias.find((una) => una.idConferencia === ponencia.id)
 
@@ -240,6 +265,7 @@ function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; d
           </Dato>
           <Dato rotulo="Duración">{duracion(ponencia.duracionEnSegundos)}</Dato>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
         <BotonMind
           variante="tenue"
           icono="folder_zip"
@@ -252,6 +278,26 @@ function DetalleDePonencia({ ponencia, datos, inicial }: { ponencia: Ponencia; d
         >
           {descargando ?? 'Descargar todo (.zip)'}
         </BotonMind>
+        {confirmando ? (
+          <span className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={borrando}
+              onClick={() => void borrar()}
+              className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-[var(--tono-rojo)] px-5 text-sm font-medium [color:var(--tono-rojo-texto)]"
+            >
+              <Icono nombre="delete" className="text-lg" /> {borrando ? 'Eliminando…' : 'Sí, eliminar la ponencia'}
+            </button>
+            <BotonMind variante="tenue" onClick={() => setConfirmando(false)}>
+              No
+            </BotonMind>
+          </span>
+        ) : (
+          <BotonMind variante="tenue" icono="delete" onClick={() => setConfirmando(true)}>
+            Eliminar
+          </BotonMind>
+        )}
+        </div>
       </Tarjeta>
 
       <div className="flex gap-2 py-2">
