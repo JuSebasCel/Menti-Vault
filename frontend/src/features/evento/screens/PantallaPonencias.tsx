@@ -246,10 +246,9 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 <td className="px-3 py-2.5 whitespace-nowrap">{duracion(ponencia.duracionEnSegundos)}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap">{ponencia.eje || '—'}</td>
                 <td className="px-3 py-2.5">
-                  <Estado {...MOMENTO[momentoDe(ponencia)]} />
+                  <EstadoDeLaGrabacion ponencia={ponencia} tarea={tareas.get(ponencia.id)} porDefecto={<Estado {...MOMENTO[momentoDe(ponencia)]} />} />
                 </td>
                 <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                  <EstadoDeLaGrabacion ponencia={ponencia} tarea={tareas.get(ponencia.id)} />
                   {ponencia.tieneTranscripcion || ponencia.tieneFuente || tareas.has(ponencia.id) ? null : (
                     <button
                       type="button"
@@ -312,26 +311,36 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   audio no quedaba ninguna señal de que se estuviera transcribiendo, y el
   botón de subir seguía ahí invitando a subirlo otra vez.
 */
-function EstadoDeLaGrabacion({ ponencia, tarea: local }: { ponencia: Ponencia; tarea: TareaEnSegundoPlano | undefined }): ReactElement | null {
+function EstadoDeLaGrabacion({
+  ponencia,
+  tarea: local,
+  porDefecto,
+}: {
+  ponencia: Ponencia
+  tarea: TareaEnSegundoPlano | undefined
+  porDefecto: ReactElement
+}): ReactElement {
   /* La tarea local manda solo mientras la base no haya avanzado ni fallado; si no, se queda colgada en "Transcribiendo…". */
   const tarea = estadoParaMostrar(ponencia, local) ?? undefined
   if (tarea?.fase === 'error' || (tarea === undefined && ponencia.estado === 'fallida')) {
     return (
-      <span className="mr-1 inline-flex items-center gap-2" title={tarea?.fase === 'error' ? tarea.mensaje : undefined}>
-        <span className="rounded-full bg-[var(--tono-rojo)] px-2.5 py-1 text-xs font-medium [color:var(--tono-rojo-texto)]">No se pudo transcribir</span>
+      <span className="inline-flex items-center gap-1.5" title={tarea?.fase === 'error' ? tarea.mensaje : 'La transcripción falló'}>
+        <span className="rounded-full bg-[var(--tono-rojo)] px-2.5 py-1 text-xs font-medium whitespace-nowrap [color:var(--tono-rojo-texto)]">Falló</span>
         <button
           type="button"
+          aria-label="Reintentar la transcripción"
+          title="Reintentar"
           onClick={() => void analizarEnSegundoPlano(ponencia.id)}
-          className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-[var(--mind-neutro)] px-3 font-medium transition-colors hover:bg-[var(--mind-variante)]"
+          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--mind-neutro)] transition-colors hover:bg-[var(--mind-variante)]"
         >
-          <Icono nombre="refresh" className="text-base" /> Reintentar
+          <Icono nombre="refresh" className="text-base" />
         </button>
       </span>
     )
   }
   if (tarea !== undefined || ponencia.estado === 'procesando') {
     return (
-      <span className="mr-1 inline-flex h-9 items-center gap-2 rounded-full bg-[var(--tono-azul)] px-3 text-xs font-medium [color:var(--tono-azul-texto)]">
+      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--tono-azul)] px-2.5 py-1 text-xs font-medium whitespace-nowrap [color:var(--tono-azul-texto)]">
         <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
         {tarea?.fase === 'subiendo' ? 'Subiendo…' : 'Transcribiendo…'}
       </span>
@@ -339,13 +348,13 @@ function EstadoDeLaGrabacion({ ponencia, tarea: local }: { ponencia: Ponencia; t
   }
   if (ponencia.estado === 'en-cola' && ponencia.tieneFuente) {
     return (
-      <span className="mr-1 inline-flex h-9 items-center gap-2 rounded-full bg-[var(--tono-azul)] px-3 text-xs font-medium [color:var(--tono-azul-texto)]">
+      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--tono-azul)] px-2.5 py-1 text-xs font-medium whitespace-nowrap [color:var(--tono-azul-texto)]">
         <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        En cola para transcribir
+        En cola
       </span>
     )
   }
-  return null
+  return porDefecto
 }
 
 type Pestana = 'transcripcion' | 'material' | 'memoria' | 'autorizacion'
