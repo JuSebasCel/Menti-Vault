@@ -331,7 +331,11 @@ function EstadoDeLaGrabacion({
     return (
       <span className="inline-flex items-center gap-2 rounded-full bg-[var(--tono-azul)] px-2.5 py-1 text-xs font-medium whitespace-nowrap [color:var(--tono-azul-texto)]">
         <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        {tarea?.fase === 'subiendo' ? 'Subiendo…' : 'Transcribiendo…'}
+        {tarea?.fase === 'extrayendo'
+          ? `Sacando el audio… ${Math.round(tarea.avance * 100)}%`
+          : tarea?.fase === 'subiendo'
+            ? 'Subiendo…'
+            : 'Transcribiendo…'}
       </span>
     )
   }

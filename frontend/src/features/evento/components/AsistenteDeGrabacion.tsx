@@ -8,6 +8,7 @@ import { esVideo, extraerAudio } from '../extraerAudio'
 import { fecha, sumarMinutos, tituloRepetido } from '../formato'
 import { carpetaDeFotosDeSesion, crearPonenteInvitado, crearSesion, subirFoto, subirGrabacion } from '../repositorio'
 import { SelectorDePonente, ponentesNuevos } from './SelectorDePonente'
+import { ponerTarea } from '@/features/conferencias/carga/segundoPlano'
 import { useEvento } from '../useEvento'
 import type { DatosDelEvento } from '../tipos'
 import { BotonMind, Chip, Icono } from './piezas'
@@ -69,7 +70,6 @@ export function AsistenteDeGrabacion({
   const [archivo, setArchivo] = useState<File | null>(null)
   const [fotos, setFotos] = useState<File[]>([])
   const [fase, setFase] = useState('')
-  const [avance, setAvance] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const entradaArchivo = useRef<HTMLInputElement>(null)
   const entradaFotos = useRef<HTMLInputElement>(null)
@@ -133,27 +133,44 @@ export function AsistenteDeGrabacion({
         return
       }
 
-      let paraSubir = archivo
-      if (tipo === 'video') {
-        setFase('Sacando el audio del video…')
-        setAvance(0)
-        paraSubir = await extraerAudio(archivo, setAvance)
-        setAvance(null)
+      if (enDemostracion()) {
+        invalidar()
+        setPaso('hecho')
+        return
       }
 
-      setFase('Subiendo la grabación…')
-      const duracion = tipo === 'transcripcion' ? 0 : await duracionDeArchivo(paraSubir)
-      const subida = await subirGrabacion(usuario.id, id, paraSubir, tipo === 'transcripcion' ? 'transcripcion' : 'audio', duracion)
-      if (!subida.ok) {
-        throw new Error(mensajeDeError(subida.codigo))
-      }
-
-      for (const [indice, foto] of fotos.entries()) {
-        setFase(`Subiendo fotos (${indice + 1} de ${fotos.length})…`)
-        if (!enDemostracion()) {
-          await subirFoto(carpetaDeFotosDeSesion(usuario.id, id), foto)
+      /*
+        Sacar el audio de un video tarda minutos con un video largo, y antes
+        se hacía con el asistente abierto: no se podía hacer nada más. Ahora
+        el asistente termina aquí y el resto sigue en segundo plano —sacar
+        el audio, subirlo, las fotos y la transcripción—, con su avance en la
+        fila de la sesión en Ponencias, igual que la transcripción.
+      */
+      const idDeLaSesion = id
+      const idDelDueno = usuario.id
+      const fuente = tipo === 'transcripcion' ? 'transcripcion' : 'audio'
+      const conVideo = tipo === 'video'
+      void (async (): Promise<void> => {
+        try {
+          let paraSubir = archivo
+          if (conVideo) {
+            ponerTarea(idDeLaSesion, { fase: 'extrayendo', avance: 0 })
+            paraSubir = await extraerAudio(archivo, (avance) => ponerTarea(idDeLaSesion, { fase: 'extrayendo', avance }))
+          }
+          ponerTarea(idDeLaSesion, { fase: 'subiendo' })
+          const duracion = fuente === 'transcripcion' ? 0 : await duracionDeArchivo(paraSubir)
+          const subida = await subirGrabacion(idDelDueno, idDeLaSesion, paraSubir, fuente, duracion)
+          if (!subida.ok) {
+            throw new Error(mensajeDeError(subida.codigo))
+          }
+          for (const foto of fotos) {
+            await subirFoto(carpetaDeFotosDeSesion(idDelDueno, idDeLaSesion), foto)
+          }
+          invalidar()
+        } catch (fallo) {
+          ponerTarea(idDeLaSesion, { fase: 'error', mensaje: fallo instanceof Error ? fallo.message : 'No se pudo subir la grabación.' })
         }
-      }
+      })()
 
       invalidar()
       setPaso('hecho')
@@ -378,11 +395,6 @@ export function AsistenteDeGrabacion({
         <div className="flex w-full max-w-md flex-col items-center gap-4 py-10">
           <span className="size-10 animate-spin rounded-full border-[3px] border-filete border-t-acento" />
           <span className="text-xl">{fase}</span>
-          {avance === null ? null : (
-            <span className="h-1.5 w-full overflow-hidden rounded-full bg-panel">
-              <span className="block h-full rounded-full bg-acento transition-[width]" style={{ width: `${Math.round(avance * 100)}%` }} />
-            </span>
-          )}
         </div>
       ) : null}
 
@@ -391,11 +403,13 @@ export function AsistenteDeGrabacion({
           <span className="flex size-14 items-center justify-center rounded-full bg-acento text-acento-contraste">
             <Icono nombre="check" className="text-3xl" />
           </span>
-          <span className="text-[36px] leading-none font-semibold">Grabación subida</span>
+          <span className="text-[36px] leading-none font-semibold">{enDemostracion() ? 'Grabación subida' : 'En camino'}</span>
           <p className="max-w-sm text-texto-tenue">
             {enDemostracion()
               ? 'Modo demostración: el recorrido es el real, pero no se guardó nada ni se va a transcribir. Apágalo en Ajustes para trabajar de verdad.'
-              : 'Ya se está transcribiendo. En Ponencias verás su avance en la fila de la sesión; puedes cerrar esto y seguir trabajando.'}
+              : tipo === 'video'
+                ? 'Estamos sacando el audio del video y después se transcribe. Verás el avance en la fila de la sesión, en Ponencias. Puedes seguir trabajando; solo no cierres esta pestaña hasta que diga "Transcribiendo…".'
+                : 'Se está subiendo y transcribiendo. Verás el avance en la fila de la sesión, en Ponencias; puedes cerrar esto y seguir trabajando.'}
           </p>
           <BotonMind variante="tenue" onClick={alTerminar} className="w-full max-w-sm justify-center">
             Salir

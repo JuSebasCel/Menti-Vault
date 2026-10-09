@@ -25,6 +25,8 @@ import { eliminarConferencia, solicitarProcesamiento, subirArchivoDeConferencia 
 */
 
 export type TareaEnSegundoPlano =
+  /** Sacando el audio de un video en el navegador, antes de subirlo; `avance` va de 0 a 1. */
+  | { readonly fase: 'extrayendo'; readonly avance: number }
   | { readonly fase: 'subiendo' }
   /** Pedido al backend; la base sigue diciendo `en-cola` hasta que el análisis arranque. */
   | { readonly fase: 'iniciando'; readonly desde: number }
@@ -147,6 +149,15 @@ export async function subirEnSegundoPlano(
 
   poner(conferencia.id, null)
   alCambiarLaBase?.()
+}
+
+/*
+  Para quien prepara la grabación fuera de este módulo —el asistente de la
+  agenda saca el audio de un video y lo sube—: así su avance se ve en la
+  misma fila que después dirá "Transcribiendo…", sin un segundo almacén.
+*/
+export function ponerTarea(idConferencia: string, tarea: TareaEnSegundoPlano | null): void {
+  poner(idConferencia, tarea)
 }
 
 /** Descarta el aviso de error de una tarjeta, una vez leído. */

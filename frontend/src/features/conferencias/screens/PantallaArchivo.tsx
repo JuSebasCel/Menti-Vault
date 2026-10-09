@@ -273,6 +273,7 @@ function sePuedeAnalizar(estado: EstadoDeProcesamiento, tarea: TareaEnSegundoPla
   sobre lo que dice la base, que todavía no se ha enterado.
 */
 const TEXTO_DE_TAREA = {
+  extrayendo: { texto: 'Sacando el audio…', icono: 'graphic_eq' },
   subiendo: { texto: 'Subiendo el archivo…', icono: 'upload' },
   iniciando: { texto: 'Analizando…', icono: 'autorenew' },
 } as const
