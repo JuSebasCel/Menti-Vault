@@ -69,6 +69,7 @@ function mapearPonente(fila: Fila): Ponente {
     versionDelConsentimiento: textoONulo(fila['consentimiento_version']),
     enviadoEl: textoONulo(fila['consentimiento_enviado_el']),
     respondidoEl: textoONulo(fila['consentimiento_respondido_el']),
+    creadoEl: texto(fila['creado_el']),
   }
 }
 
@@ -91,6 +92,7 @@ function mapearPonencia(fila: Fila): Ponencia {
     tipo: (texto(fila['tipo_de_sesion']) || 'conferencia') as Ponencia['tipo'],
     eje: texto(fila['eje']),
     tieneTranscripcion: texto(fila['estado']) === 'procesada',
+    cargadaEl: texto(fila['cargada_el']),
   }
 }
 

@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { descargar, listarArchivos } from '@/features/almacen/repositorio'
-import { APROBACION, fecha, minuto } from './formato'
+import { fecha, minuto } from './formato'
 import { carpetaDeFotosDeSesion, leerTranscripcion, listarFotos } from './repositorio'
 import type { DatosDelEvento, Ponencia } from './tipos'
 
@@ -74,8 +74,6 @@ export async function descargarPonencia(ponencia: Ponencia, datos: DatosDelEvent
     `Fecha: ${fecha(ponencia.fecha)}${ponencia.horaInicio === null ? '' : `, ${ponencia.horaInicio} – ${ponencia.horaFin ?? ''}`}`,
     `Espacio: ${ponencia.sala || '—'}`,
     `Eje: ${ponencia.eje || '—'}`,
-    `Texto: ${APROBACION[ponencia.aprobacion].etiqueta}`,
-    ponencia.comentarioDelPonente === '' ? '' : `Cambio pedido por el ponente: ${ponencia.comentarioDelPonente}`,
     memoria === undefined ? 'Sin memoria todavía.' : '',
     faltantes.length === 0 ? '' : `No se pudieron descargar: ${faltantes.join(', ')}`,
   ]

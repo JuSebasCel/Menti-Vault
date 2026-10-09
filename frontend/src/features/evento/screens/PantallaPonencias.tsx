@@ -10,11 +10,12 @@ import { Modal } from '@/shared/ui'
 import { carpetaDeFotosDeSesion, eliminarSesion, leerTranscripcion } from '../repositorio'
 import { useEvento } from '../useEvento'
 import { CargaDelEvento } from '../components/CargaDelEvento'
-import { Filtros } from '../components/Filtros'
+import { CampoDeBusqueda, Filtros, normalizarBusqueda } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { MOMENTO, duracion, fecha, fechaYHora, minuto, momentoDe } from '../formato'
+import { CONSENTIMIENTO, MOMENTO, duracion, fecha, fechaYHora, minuto, mismoPonente, momentoDe } from '../formato'
+import { USOS_DEL_CONSENTIMIENTO } from '../tipos'
 import type { DatosDelEvento, Ponencia, Segmento } from '../tipos'
 
 /*
@@ -31,24 +32,38 @@ export function PantallaPonencias(): ReactElement {
 
 const DIA_CORTO = new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric' })
 
+type Orden = 'recientes' | 'antiguas' | 'agenda' | 'titulo'
+
+/* Por defecto, lo último que se agregó arriba: es lo que se acaba de crear y se quiere encontrar. */
+const ORDENES: Record<Orden, (una: Ponencia, otra: Ponencia) => number> = {
+  recientes: (una, otra) => otra.cargadaEl.localeCompare(una.cargadaEl),
+  antiguas: (una, otra) => una.cargadaEl.localeCompare(otra.cargadaEl),
+  agenda: (una, otra) => `${una.fecha} ${una.horaInicio ?? '99'}`.localeCompare(`${otra.fecha} ${otra.horaInicio ?? '99'}`),
+  titulo: (una, otra) => una.titulo.localeCompare(otra.titulo, 'es'),
+}
+
 function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
   const [origen, setOrigen] = useState<DOMRect | null>(null)
   const [dia, setDia] = useState<string | null>(null)
   const [estado, setEstado] = useState<'todas' | 'aprobadas' | 'revision'>('todas')
   const [eje, setEje] = useState<string | null>(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [orden, setOrden] = useState<Orden>('recientes')
   const abierta = datos.ponencias.find((ponencia) => ponencia.id === parametros.get('ver')) ?? null
   const subiendo = parametros.get('subir') === '1'
   const botonSubir = useRef<HTMLButtonElement>(null)
 
   const dias = useMemo(() => [...new Set(datos.ponencias.map((ponencia) => ponencia.fecha))].sort(), [datos.ponencias])
+  const buscado = normalizarBusqueda(busqueda)
   const visibles = datos.ponencias.filter(
     (ponencia) =>
+      (buscado === '' || normalizarBusqueda(`${ponencia.titulo} ${ponencia.ponente}`).includes(buscado)) &&
       (dia === null || ponencia.fecha === dia) &&
       (eje === null || ponencia.eje === eje) &&
       (estado === 'todas' ||
         (estado === 'aprobadas' ? momentoDe(ponencia) === 'ocurrio' : ['hoy', 'proxima'].includes(momentoDe(ponencia)))),
-  )
+  ).sort(ORDENES[orden])
 
   const cambiar = (clave: string, valor: string | null): void => {
     const siguientes = new URLSearchParams(parametros)
@@ -67,8 +82,23 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Ponencias">
+        <CampoDeBusqueda valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar por título o ponente" />
         <Filtros
           grupos={[
+            {
+              clave: 'orden',
+              rotulo: 'Orden',
+              icono: 'sort',
+              valor: orden,
+              porDefecto: 'recientes',
+              alCambiar: (valor) => setOrden(valor as Orden),
+              opciones: [
+                { valor: 'recientes', etiqueta: 'Más recientes' },
+                { valor: 'antiguas', etiqueta: 'Más antiguas' },
+                { valor: 'agenda', etiqueta: 'Por agenda' },
+                { valor: 'titulo', etiqueta: 'Por título (A-Z)' },
+              ],
+            },
             {
               clave: 'dia',
               rotulo: 'Día',
@@ -219,7 +249,7 @@ function Ponencias({ datos }: { datos: DatosDelEvento }): ReactElement {
   )
 }
 
-type Pestana = 'transcripcion' | 'material' | 'memoria' | 'aprobacion'
+type Pestana = 'transcripcion' | 'material' | 'memoria' | 'autorizacion'
 
 function DetalleDePonencia({
   ponencia,
@@ -276,7 +306,7 @@ function DetalleDePonencia({
             void descargarPonencia(ponencia, datos, setDescargando).finally(() => setDescargando(null))
           }}
         >
-          {descargando ?? 'Descargar todo (.zip)'}
+          {descargando ?? 'Descargar todo'}
         </BotonMind>
         {confirmando ? (
           <span className="flex items-center gap-2">
@@ -310,8 +340,8 @@ function DetalleDePonencia({
         <Chip elegido={pestana === 'memoria'} onClick={() => setPestana('memoria')}>
           Memoria
         </Chip>
-        <Chip elegido={pestana === 'aprobacion'} onClick={() => setPestana('aprobacion')}>
-          Aprobación
+        <Chip elegido={pestana === 'autorizacion'} onClick={() => setPestana('autorizacion')}>
+          Autorización
         </Chip>
       </div>
 
@@ -335,7 +365,7 @@ function DetalleDePonencia({
           <VisorDePdf ruta={memoria.archivoPdf} rutaDocx={memoria.archivoDocx} titulo={memoria.nombre} />
         )
       ) : null}
-      {pestana === 'aprobacion' ? <Aprobacion ponencia={ponencia} /> : null}
+      {pestana === 'autorizacion' ? <Autorizacion ponencia={ponencia} datos={datos} /> : null}
     </div>
   )
 }
@@ -349,6 +379,23 @@ function Transcripcion({ ponencia }: { ponencia: Ponencia }): ReactElement {
   const [segmentos, setSegmentos] = useState<readonly Segmento[] | null | undefined>(undefined)
   const [busqueda, setBusqueda] = useState('')
   const [sonando, setSonando] = useState<Segmento | null>(null)
+  const [copiada, setCopiada] = useState(false)
+
+  /*
+    Se copia entera y como texto corrido, con el título y el ponente arriba:
+    es para pegarla en otro documento o en un chat, donde los minutos de cada
+    fragmento solo estorban.
+  */
+  const copiar = (): void => {
+    if (segmentos == null) {
+      return
+    }
+    const texto = [ponencia.titulo, ponencia.ponente, '', segmentos.map((segmento) => segmento.texto.trim()).join(' ')].join('\n')
+    void navigator.clipboard?.writeText(texto).then(() => {
+      setCopiada(true)
+      window.setTimeout(() => setCopiada(false), 1800)
+    })
+  }
 
   useEffect(() => {
     void leerTranscripcion(ponencia.idDueno, ponencia.id).then(setSegmentos)
@@ -388,6 +435,9 @@ function Transcripcion({ ponencia }: { ponencia: Ponencia }): ReactElement {
         <span className="text-sm whitespace-nowrap text-texto-tenue">
           {busqueda === '' ? `${segmentos.length} fragmentos` : `${visibles.length} coincidencias`}
         </span>
+        <BotonMind variante="tenue" icono={copiada ? 'check' : 'content_copy'} onClick={copiar}>
+          {copiada ? 'Copiada' : 'Copiar transcripción'}
+        </BotonMind>
       </div>
 
       {sonando === null ? null : (
@@ -414,56 +464,47 @@ function Transcripcion({ ponencia }: { ponencia: Ponencia }): ReactElement {
   )
 }
 
-function Aprobacion({ ponencia }: { ponencia: Ponencia }): ReactElement {
-  const pasos = [
-    { titulo: 'Memoria redactada', hecho: true, cuando: null },
-    { titulo: 'Enviada al ponente para revisión', hecho: ponencia.aprobacion !== 'sin-enviar', cuando: null },
-    {
-      titulo:
-        ponencia.aprobacion === 'con-cambios'
-          ? 'Aprobada con cambios'
-          : ponencia.aprobacion === 'aprobada'
-            ? 'Aprobada por el ponente'
-            : 'Esperando la respuesta del ponente',
-      hecho: ponencia.aprobacion === 'aprobada' || ponencia.aprobacion === 'con-cambios',
-      cuando: ponencia.aprobadaEl,
-    },
-  ]
-
+/*
+  Lo único que se le pide a un ponente: el tratamiento de sus datos, uso por
+  uso. El texto de su memoria ya no pasa por su aprobación, así que aquí no
+  hay pasos de revisión; solo qué autorizó y cuándo.
+*/
+function Autorizacion({ ponencia, datos }: { ponencia: Ponencia; datos: DatosDelEvento }): ReactElement {
+  const ponente = datos.ponentes.find((uno) => mismoPonente(ponencia.ponente, uno.nombre))
+  if (ponente === undefined) {
+    return (
+      <Tarjeta>
+        <p className="text-texto-tenue">{ponencia.ponente} no está entre los ponentes del evento.</p>
+      </Tarjeta>
+    )
+  }
+  const respondio = ponente.consentimiento === 'aceptado' || ponente.consentimiento === 'rechazado'
   return (
     <Tarjeta className="flex flex-col gap-5">
-      <span className="text-2xl">Revisión del ponente</span>
-      <ol className="flex flex-col gap-2">
-        {pasos.map((paso) => (
-          <li key={paso.titulo} className="flex items-center gap-3 rounded-2xl bg-panel px-4 py-3">
-            <Icono
-              nombre={paso.hecho ? 'check_circle' : 'radio_button_unchecked'}
-              relleno={paso.hecho}
-              className={`text-xl ${paso.hecho ? 'text-validado' : 'text-texto-tenue'}`}
-            />
-            <span className="flex-1">{paso.titulo}</span>
-            {paso.cuando === null ? null : <span className="text-sm text-texto-tenue">{fechaYHora(paso.cuando)}</span>}
-          </li>
-        ))}
-      </ol>
-
-      {ponencia.comentarioDelPonente === '' ? null : (
-        <div className="flex flex-col gap-2 rounded-[20px] bg-[var(--tono-azul)] px-5 py-4 [color:var(--tono-azul-texto)]">
-          <span className="flex items-center gap-2 text-sm font-semibold">
-            <Icono nombre="edit_note" className="text-lg" /> Cambio que pidió el ponente
-          </span>
-          <span className="text-[15px] leading-relaxed">«{ponencia.comentarioDelPonente}»</span>
-          <span className="flex items-center gap-1.5 text-sm opacity-80">
-            <Icono nombre="check_circle" className="text-base" /> Aplicado en la memoria: por eso queda aprobada con ajustes.
-          </span>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-2xl">Tratamiento de datos</span>
+        <Estado {...CONSENTIMIENTO[ponente.consentimiento]} />
+      </div>
+      {respondio ? (
+        <ul className="flex flex-col gap-2">
+          {USOS_DEL_CONSENTIMIENTO.map((uso) => {
+            const si = ponente.consentimiento === 'aceptado' && ponente.usos[uso.clave] === true
+            return (
+              <li key={uso.clave} className="flex items-center gap-3 rounded-2xl bg-panel px-4 py-3">
+                <Icono nombre={si ? 'check_circle' : 'cancel'} className={`text-xl ${si ? 'text-validado' : 'text-texto-tenue'}`} />
+                <span className="flex-1">{uso.etiqueta}</span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="text-texto-tenue">
+          {ponente.consentimiento === 'sin-enviar'
+            ? `Falta el correo de ${ponente.nombre} para enviarle la autorización.`
+            : `${ponente.nombre} todavía no ha respondido la autorización.`}
+        </p>
       )}
-
-      {ponencia.aprobacion === 'enviada' ? (
-        <BotonMind variante="tenue" icono="notifications" className="w-fit">
-          Recordarle al ponente
-        </BotonMind>
-      ) : null}
+      {ponente.respondidoEl === null ? null : <span className="text-sm text-texto-tenue">Respondió el {fechaYHora(ponente.respondidoEl)}</span>}
     </Tarjeta>
   )
 }

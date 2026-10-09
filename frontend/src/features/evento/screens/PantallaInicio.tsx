@@ -6,14 +6,14 @@ import { Modal } from '@/shared/ui'
 import { CargaDelEvento } from '../components/CargaDelEvento'
 import { Miniatura } from '../components/MiniaturaDeMemoria'
 import { BotonMind, Chip, EncabezadoDePagina, Icono, Tarjeta, Vacio } from '../components/piezas'
-import { estaAprobada } from '../formato'
 import type { DatosDelEvento } from '../tipos'
 
 /*
   El inicio, con la misma forma que el de Melon Mind: saludo con la cifra
   grande, dos tarjetas de "cómo va" a la derecha, las sesiones del día con
   chips debajo y, al lado, las solicitudes —lo que espera una respuesta de
-  alguien—.
+  alguien—. Lo único que se le pide a un ponente es su autorización de
+  datos: el texto ya no pasa por su aprobación.
 
   Las solicitudes reemplazan al ciclo en pasos de la versión anterior: un
   evento no avanza en orden de casilla en casilla, y lo que el organizador
@@ -39,7 +39,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [creando, setCreando] = useState(false)
   const botonCrear = useRef<HTMLButtonElement>(null)
 
-  const porAprobar = ponencias.filter((ponencia) => !estaAprobada(ponencia.aprobacion)).length
+  const sinGrabacion = ponencias.filter((ponencia) => !ponencia.tieneTranscripcion).length
   const sinConsentir = ponentes.filter((ponente) => ponente.consentimiento !== 'aceptado').length
 
   const solicitudes: Solicitud[] = [
@@ -49,26 +49,8 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         id: ponente.id,
         icono: 'mark_email_unread',
         titulo: ponente.nombre,
-        detalle: 'No ha respondido la invitación',
+        detalle: 'No ha respondido la autorización de datos',
         ruta: `/ponentes?ver=${ponente.id}`,
-      })),
-    ...ponencias
-      .filter((ponencia) => ponencia.aprobacion === 'enviada')
-      .map((ponencia) => ({
-        id: ponencia.id,
-        icono: 'rate_review',
-        titulo: ponencia.titulo,
-        detalle: `En revisión de ${ponencia.ponente}`,
-        ruta: `/ponencias?ver=${ponencia.id}&pestana=aprobacion`,
-      })),
-    ...ponencias
-      .filter((ponencia) => ponencia.comentarioDelPonente !== '')
-      .map((ponencia) => ({
-        id: `${ponencia.id}-cambios`,
-        icono: 'edit_note',
-        titulo: ponencia.titulo,
-        detalle: `${ponencia.ponente.split(' ')[0] ?? ''} pidió: «${ponencia.comentarioDelPonente}»`,
-        ruta: `/ponencias?ver=${ponencia.id}&pestana=aprobacion`,
       })),
   ]
 
@@ -103,9 +85,9 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
         </Tarjeta>
 
         <Tarjeta className="flex flex-col justify-center gap-1">
-          <span className="text-2xl text-texto-tenue">Por aprobar:</span>
+          <span className="text-2xl text-texto-tenue">Sin grabación:</span>
           <span className="text-2xl font-semibold">
-            {porAprobar === 0 ? 'Todo aprobado' : `${porAprobar} ${porAprobar === 1 ? 'ponencia' : 'ponencias'}`}
+            {sinGrabacion === 0 ? 'Ninguna' : `${sinGrabacion} ${sinGrabacion === 1 ? 'ponencia' : 'ponencias'}`}
           </span>
         </Tarjeta>
 
@@ -188,7 +170,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
               alPulsar={() => void navegar('/memorias-del-evento')}
               inicio={<Icono nombre="description" className="text-2xl" />}
               titulo={`${memorias.filter((memoria) => memoria.alcance === 'ponencia').length} memorias por ponencia`}
-              detalle="Aprobadas por sus ponentes"
+              detalle="De ponentes que autorizaron sus datos"
             />
             <Fila
               alPulsar={() => void navegar('/articulos')}
@@ -202,7 +184,7 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
 
       {/* El menú de crear de la referencia: nace del botón y lleva a cada flujo. */}
       <Modal abierto={creando} alCerrar={() => setCreando(false)} titulo="Crear" anclaje="disparador" anclaEn={botonCrear} ancho="angosto">
-        <div className="flex flex-col gap-1 pb-2">
+        <div className="flex flex-col gap-2 pb-2">
           {(
             [
               ['calendar_add_on', 'Nueva sesión', '/agenda?nueva=1'],
@@ -219,9 +201,9 @@ function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
                 setCreando(false)
                 void navegar(ruta)
               }}
-              className="flex h-16 cursor-pointer items-center gap-4 rounded-[24px] px-3 text-left text-base font-medium transition-colors hover:bg-panel"
+              className="flex h-16 cursor-pointer items-center gap-4 rounded-[24px] bg-fondo px-3 text-left text-base font-medium shadow-[0_0_0_1px_var(--bitacora-filete),0_6px_16px_-8px_rgb(0_0_0/0.35)] transition-[background-color,transform] hover:-translate-y-px hover:bg-panel"
             >
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste shadow-[0_4px_10px_-4px_rgb(0_0_0/0.45)]">
                 <Icono nombre={icono} className="text-[22px]" />
               </span>
               {etiqueta}

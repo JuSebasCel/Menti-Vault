@@ -5,11 +5,11 @@ import { mensajeDeError } from '@/shared/errors'
 import { Modal } from '@/shared/ui'
 import { AsistenteDeInvitacion } from '../components/AsistenteDeInvitacion'
 import { CargaDelEvento } from '../components/CargaDelEvento'
-import { Filtros } from '../components/Filtros'
+import { CampoDeBusqueda, Filtros, normalizarBusqueda } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { VistaDelPonente } from '../components/VistaDelPonente'
 import { Avatar, BotonMind, Chip, Cifra, Dato, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { APROBACION, CONSENTIMIENTO, fechaYHora, iniciales, mismoPonente } from '../formato'
+import { CONSENTIMIENTO, MOMENTO, fechaYHora, iniciales, mismoPonente, momentoDe } from '../formato'
 import { actualizarPonente, eliminarPonente } from '../repositorio'
 import { useEvento } from '../useEvento'
 import { USOS_DEL_CONSENTIMIENTO } from '../tipos'
@@ -18,8 +18,8 @@ import type { DatosDelEvento, Ponente } from '../tipos'
 /*
   Los ponentes del evento y lo que cada uno autorizó.
 
-  Un ponente se agrega ya invitado: "Nuevo ponente" pide nombre, correo y los
-  usos, y envía la invitación en el mismo paso. No existe un ponente "por
+  Un ponente se agrega con su autorización: "Nuevo ponente" pide nombre, correo y los
+  usos, y envía la autorización de datos en el mismo paso. No existe un ponente "por
   invitar" esperando en el directorio, porque no hay nada que hacer con él
   hasta que se le pide la autorización.
 
@@ -32,12 +32,13 @@ export function PantallaPonentes(): ReactElement {
 }
 
 type Filtro = 'todos' | 'aceptado' | 'enviado' | 'rechazado'
-type Orden = 'nombre' | 'ponencias'
+type Orden = 'recientes' | 'antiguos' | 'nombre' | 'ponencias'
 
 function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const [parametros, setParametros] = useSearchParams()
   const [filtro, setFiltro] = useState<Filtro>('todos')
-  const [orden, setOrden] = useState<Orden>('nombre')
+  const [orden, setOrden] = useState<Orden>('recientes')
+  const [busqueda, setBusqueda] = useState('')
   const [origen, setOrigen] = useState<DOMRect | null>(null)
   const botonNuevo = useRef<HTMLButtonElement>(null)
 
@@ -48,12 +49,21 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
   const visibles = useMemo(() => {
     const ponenciasDe = (ponente: Ponente): number =>
       datos.ponencias.filter((ponencia) => mismoPonente(ponencia.ponente, ponente.nombre)).length
+    const buscado = normalizarBusqueda(busqueda)
     const filtrados = datos.ponentes.filter(
       (ponente) =>
-        filtro === 'todos' || ponente.consentimiento === filtro || (filtro === 'enviado' && ponente.consentimiento === 'sin-enviar'),
+        (buscado === '' || normalizarBusqueda(`${ponente.nombre} ${ponente.institucion} ${ponente.correo ?? ''}`).includes(buscado)) &&
+        (filtro === 'todos' || ponente.consentimiento === filtro || (filtro === 'enviado' && ponente.consentimiento === 'sin-enviar')),
     )
-    return orden === 'nombre' ? filtrados : [...filtrados].sort((uno, otro) => ponenciasDe(otro) - ponenciasDe(uno))
-  }, [datos.ponentes, datos.ponencias, filtro, orden])
+    /* Por defecto, lo último que se agregó arriba: es a quien se acaba de dar de alta y se quiere encontrar. */
+    const comparar: Record<Orden, (uno: Ponente, otro: Ponente) => number> = {
+      recientes: (uno, otro) => otro.creadoEl.localeCompare(uno.creadoEl) || uno.nombre.localeCompare(otro.nombre, 'es'),
+      antiguos: (uno, otro) => uno.creadoEl.localeCompare(otro.creadoEl) || uno.nombre.localeCompare(otro.nombre, 'es'),
+      nombre: (uno, otro) => uno.nombre.localeCompare(otro.nombre, 'es'),
+      ponencias: (uno, otro) => ponenciasDe(otro) - ponenciasDe(uno),
+    }
+    return [...filtrados].sort(comparar[orden])
+  }, [datos.ponentes, datos.ponencias, filtro, orden, busqueda])
 
   const ponenciasDe = (ponente: Ponente): number =>
     datos.ponencias.filter((ponencia) => mismoPonente(ponencia.ponente, ponente.nombre)).length
@@ -72,6 +82,7 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoDePagina titulo="Ponentes">
+        <CampoDeBusqueda valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar por nombre" />
         <Filtros
           grupos={[
             {
@@ -93,10 +104,12 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
               rotulo: 'Ordenar por',
               icono: 'sort',
               valor: orden,
-              porDefecto: 'nombre',
+              porDefecto: 'recientes',
               alCambiar: (valor) => setOrden(valor as Orden),
               opciones: [
-                { valor: 'nombre', etiqueta: 'Nombre' },
+                { valor: 'recientes', etiqueta: 'Más recientes' },
+                { valor: 'antiguos', etiqueta: 'Más antiguos' },
+                { valor: 'nombre', etiqueta: 'Nombre (A-Z)' },
                 { valor: 'ponencias', etiqueta: 'Ponencias' },
               ],
             },
@@ -188,7 +201,7 @@ function Ponentes({ datos }: { datos: DatosDelEvento }): ReactElement {
       <Modal
         abierto={invitar !== null}
         alCerrar={() => cambiar('invitar', null)}
-        titulo={invitar === '1' ? 'Nuevo ponente' : 'Reenviar invitación'}
+        titulo={invitar === '1' ? 'Nuevo ponente' : 'Reenviar autorización'}
         anclaEn={botonNuevo}
         anclaje="disparador"
         ancho="normal"
@@ -273,7 +286,7 @@ function DetalleDelPonente({
           </BotonMind>
           {aceptado ? null : (
             <BotonMind variante="tenue" icono="send" onClick={alReenviar}>
-              Reenviar invitación
+              Reenviar autorización
             </BotonMind>
           )}
           <BotonMind variante="tenue" icono="edit" onClick={() => setPestana('editar')}>
@@ -315,11 +328,11 @@ function DetalleDelPonente({
             <p className="text-texto-tenue">
               {ponente.consentimiento === 'rechazado'
                 ? 'No autorizó el uso de su ponencia.'
-                : 'Recibió la invitación y todavía no responde. Hasta que autorice, su ponencia no entra en memorias, artículos ni redes.'}
+                : 'Recibió la autorización de datos y todavía no responde. Hasta que autorice, su ponencia no entra en memorias, artículos ni redes.'}
             </p>
           )}
           <div className="grid grid-cols-3 gap-4">
-            <Dato rotulo="Invitación enviada">{fechaYHora(ponente.enviadoEl)}</Dato>
+            <Dato rotulo="Autorización enviada">{fechaYHora(ponente.enviadoEl)}</Dato>
             <Dato rotulo="Respondió">{fechaYHora(ponente.respondidoEl)}</Dato>
             <Dato rotulo="Versión del texto">{ponente.versionDelConsentimiento ?? '—'}</Dato>
           </div>
@@ -332,11 +345,8 @@ function DetalleDelPonente({
             <div key={ponencia.id} className="flex flex-col gap-2 rounded-2xl bg-panel px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="truncate">{ponencia.titulo}</span>
-                <Estado {...APROBACION[ponencia.aprobacion]} />
+                <Estado {...MOMENTO[momentoDe(ponencia)]} />
               </div>
-              {ponencia.comentarioDelPonente === '' ? null : (
-                <span className="text-sm [color:var(--tono-azul-texto)]">Pidió cambiar: «{ponencia.comentarioDelPonente}»</span>
-              )}
             </div>
           ))}
           {ponencias.length === 0 ? <p className="text-texto-tenue">Todavía no tiene ponencias en el evento.</p> : null}

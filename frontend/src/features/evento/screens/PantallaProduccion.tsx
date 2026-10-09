@@ -50,7 +50,7 @@ function Producciones({ datos }: { datos: DatosDelEvento }): ReactElement {
       </EncabezadoDePagina>
 
       <div className="entrar-escalonado grid grid-cols-2 gap-2">
-        {datos.producciones.map((produccion) => (
+        {[...datos.producciones].sort((uno, otro) => otro.creadaEl.localeCompare(uno.creadaEl)).map((produccion) => (
           <button
             key={produccion.id}
             type="button"

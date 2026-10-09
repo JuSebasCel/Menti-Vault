@@ -7,7 +7,7 @@ import { PanelLateral } from '../components/PanelLateral'
 import { VisorDePdf } from '../components/VisorDePdf'
 import { Miniatura } from '../components/MiniaturaDeMemoria'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono, Tarjeta } from '../components/piezas'
-import { APROBACION, estaAprobada, fecha, fechaYHora, mismoPonente } from '../formato'
+import { fecha, fechaYHora, mismoPonente } from '../formato'
 import type { DatosDelEvento, Memoria, Ponencia } from '../tipos'
 
 /*
@@ -15,8 +15,9 @@ import type { DatosDelEvento, Memoria, Ponencia } from '../tipos'
   memoria general, las de cada eje y las de cada ponencia. Todas con el mismo
   formato y las mismas indicaciones, que se configuran en el evento.
 
-  Una memoria solo puede hacerse con lo que está listo: transcrito,
-  autorizado por su ponente y con su texto aprobado. "Nueva memoria" lo
+  Una memoria solo puede hacerse con lo que está listo: transcrito y
+  autorizado por su ponente. El texto ya no pasa por su aprobación: lo único
+  que se le pide es el tratamiento de sus datos. "Nueva memoria" lo
   comprueba antes de redactar y dice qué falta en vez de dejar generar un
   documento que no se podría entregar.
 */
@@ -29,7 +30,6 @@ function requisitos(ponencia: Ponencia, datos: DatosDelEvento): { texto: string;
   const ponente = datos.ponentes.find((uno) => mismoPonente(ponencia.ponente, uno.nombre))
   return [
     { texto: 'Autorizada por su ponente', ok: ponente?.consentimiento === 'aceptado' && ponente.usos.memoria === true },
-    { texto: 'Texto aprobado', ok: estaAprobada(ponencia.aprobacion) },
   ]
 }
 
@@ -43,6 +43,7 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
   const general = datos.memorias.find((memoria) => memoria.alcance === 'evento')
   const porEje = datos.memorias.filter((memoria) => memoria.alcance === 'agrupacion' && memoria.archivoPdf !== null)
   const porPonencia = datos.memorias.filter((memoria) => memoria.alcance === 'ponencia' && memoria.archivoPdf !== null)
+    .sort((una, otra) => otra.generadaEl.localeCompare(una.generadaEl))
   const listas = datos.ponencias.filter((ponencia) => requisitos(ponencia, datos).every((requisito) => requisito.ok)).length
 
   const abrir = (memoria: Memoria, boton: HTMLElement): void => {
@@ -107,7 +108,7 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 key={memoria.id}
                 memoria={memoria}
                 titulo={memoria.agrupacion ?? memoria.nombre}
-                detalle={`${datos.ponencias.filter((ponencia) => ponencia.eje === memoria.agrupacion && estaAprobada(ponencia.aprobacion)).length} sesiones aprobadas`}
+                detalle={`${datos.ponencias.filter((ponencia) => ponencia.eje === memoria.agrupacion).length} sesiones`}
                 alAbrir={abrir}
               />
             ))}
@@ -125,7 +126,6 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
               memoria={memoria}
               titulo={ponencia?.titulo ?? memoria.nombre}
               detalle={ponencia?.ponente ?? ''}
-              estado={ponencia === undefined ? undefined : <Estado {...APROBACION[ponencia.aprobacion]} />}
               alAbrir={abrir}
             />
           )
@@ -142,7 +142,6 @@ function Memorias({ datos }: { datos: DatosDelEvento }): ReactElement {
                 {fechaYHora(abierta.generadaEl)}
               </span>
             </div>
-            <CambioPedido memoria={abierta} datos={datos} />
             <VisorDePdf ruta={abierta.archivoPdf} rutaDocx={abierta.archivoDocx} titulo={abierta.nombre} />
           </div>
         )}
@@ -304,21 +303,3 @@ function Requisito({ ok, texto }: { ok: boolean; texto: string }): ReactElement 
   )
 }
 
-/* Lo que el ponente pidió corregir, encima de su memoria: es lo primero que hay que comprobar al abrirla. */
-function CambioPedido({ memoria, datos }: { memoria: Memoria; datos: DatosDelEvento }): ReactElement | null {
-  const ponencia = datos.ponencias.find((una) => una.id === memoria.idConferencia)
-  if (ponencia === undefined || ponencia.comentarioDelPonente === '') {
-    return null
-  }
-  return (
-    <div className="flex flex-col gap-2 rounded-[20px] bg-[var(--tono-azul)] px-5 py-4 [color:var(--tono-azul-texto)]">
-      <span className="flex items-center gap-2 text-sm font-semibold">
-        <Icono nombre="edit_note" className="text-lg" /> {ponencia.ponente.split(' ')[0]} pidió cambiar
-      </span>
-      <span className="text-[15px] leading-relaxed">«{ponencia.comentarioDelPonente}»</span>
-      <span className="flex items-center gap-1.5 text-sm opacity-80">
-        <Icono nombre="check_circle" className="text-base" /> Aplicado en esta versión
-      </span>
-    </div>
-  )
-}

@@ -67,3 +67,41 @@ export function Filtros({ grupos }: { grupos: readonly GrupoDeFiltro[] }): React
     </>
   )
 }
+
+/* Sin tildes ni mayúsculas: quien busca "Gomez" tiene que encontrar a "Gómez". */
+export function normalizarBusqueda(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+/*
+  La búsqueda de una lista, en la cabecera junto a los filtros: con el
+  nombre literal se llega antes que filtrando por día o por estado.
+*/
+export function CampoDeBusqueda({
+  valor,
+  alCambiar,
+  placeholder,
+}: {
+  valor: string
+  alCambiar: (valor: string) => void
+  placeholder: string
+}): ReactElement {
+  return (
+    <label className="flex h-10 w-72 items-center gap-2 rounded-full bg-[var(--mind-neutro)] px-4 transition-colors focus-within:bg-[var(--mind-variante)]">
+      <Icono nombre="search" relleno={false} className="text-lg text-texto-tenue" />
+      <input
+        type="search"
+        value={valor}
+        onChange={(evento) => alCambiar(evento.target.value)}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-tenue"
+      />
+      {valor === '' ? null : (
+        <button type="button" onClick={() => alCambiar('')} aria-label="Borrar la búsqueda" className="cursor-pointer text-texto-tenue hover:text-texto">
+          <Icono nombre="close" className="text-base" />
+        </button>
+      )}
+    </label>
+  )
+}

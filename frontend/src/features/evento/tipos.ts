@@ -54,6 +54,8 @@ export type Ponente = {
   readonly versionDelConsentimiento: string | null
   readonly enviadoEl: string | null
   readonly respondidoEl: string | null
+  /** Cuándo se agregó al evento: ordena el directorio por los más recientes. */
+  readonly creadoEl: string
 }
 
 export type Ponencia = {
@@ -77,6 +79,8 @@ export type Ponencia = {
   readonly eje: string
   /** Si ya hay grabación o transcripción: una sesión de la agenda puede no tenerla todavía. */
   readonly tieneTranscripcion: boolean
+  /** Cuándo se creó la sesión: ordena la lista por las más recientes. */
+  readonly cargadaEl: string
 }
 
 export type TipoDeSesion = 'conferencia' | 'taller' | 'panel' | 'apertura' | 'cierre'

@@ -9,7 +9,7 @@ import { Filtros } from '../components/Filtros'
 import { PanelLateral } from '../components/PanelLateral'
 import { SelectorDeHora } from '../components/SelectorDeHora'
 import { BotonMind, Chip, EncabezadoDePagina, Estado, Icono } from '../components/piezas'
-import { APROBACION, fecha, minutosEntre, sumarMinutos } from '../formato'
+import { MOMENTO, fecha, minutosEntre, momentoDe, sumarMinutos } from '../formato'
 import { actualizarSesion, crearSesion, eliminarSesion } from '../repositorio'
 import type { CambiosDeSesion } from '../repositorio'
 import { useEvento } from '../useEvento'
@@ -327,7 +327,7 @@ function VistaPorDias({
                       {sesion.eje === '' ? null : <span className="rounded-full bg-[var(--mind-neutro)] px-2.5 py-1 text-xs">{sesion.eje}</span>}
                       <span className="rounded-full bg-[var(--mind-neutro)] px-2.5 py-1 text-xs">{sesion.sala || 'Sin espacio'}</span>
                     </span>
-                    <Estado {...APROBACION[sesion.aprobacion]} />
+                    <Estado {...MOMENTO[momentoDe(sesion)]} />
                   </div>
                 </div>
               )
