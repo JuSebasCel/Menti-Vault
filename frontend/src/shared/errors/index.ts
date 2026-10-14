@@ -76,6 +76,12 @@ export type CodigoError =
   | 'MEM_DOCX_DEMASIADO_GRANDE'
   | 'MEM_PDF_SIN_CONVERSOR'
   | 'MEM_PDF_FALLO'
+  /* Artículos: los que el backend responde antes de aceptar un paso, con el mismo texto. */
+  | 'ART_SIN_CLAVE'
+  | 'ART_NO_ENCONTRADO'
+  | 'ART_PASO_NO_DISPONIBLE'
+  | 'ART_SIN_PONENCIAS'
+  | 'ART_MATERIAL_DEMASIADO_GRANDE'
   /* Fallos de OpenAI que llegan desde el backend. Sin ellos, quedarse sin saldo se leía como un error genérico. */
   | 'IA_API_KEY_RECHAZADA'
   | 'IA_LIMITE_DE_USO'
@@ -222,6 +228,13 @@ const MENSAJES: Record<CodigoError, string> = {
   MEM_NOMBRE_REQUERIDO: 'Escribe un nombre para la memoria antes de generarla.',
   MEM_NOMBRE_MUY_LARGO: `El nombre de la memoria admite hasta ${LARGO_MAXIMO_DE_MEMORIA} caracteres. Acórtalo para generarla.`,
   MEM_NO_ENCONTRADA: 'No encontramos esa memoria. Puede que ya se haya eliminado.',
+  ART_SIN_CLAVE:
+    'La redacción de artículos todavía no está activada en el servidor. Pide a la administración que configure la clave de Anthropic.',
+  ART_NO_ENCONTRADO: 'No encontramos ese artículo entre los tuyos.',
+  ART_PASO_NO_DISPONIBLE: 'Este artículo ya está en otro paso. Recarga la página para ver en qué va.',
+  ART_SIN_PONENCIAS:
+    'Ninguna de las ponencias elegidas tiene una transcripción que se pueda leer. Transcribe al menos una antes de escribir el artículo.',
+  ART_MATERIAL_DEMASIADO_GRANDE: 'Las ponencias elegidas suman demasiado texto para un solo artículo. Elige menos y vuelve a intentarlo.',
   MEM_FALLO_GENERACION:
     'No pudimos generar la memoria. Puede que la conferencia o la plantilla de origen ya no estén disponibles.',
   IA_API_KEY_RECHAZADA:

@@ -9,6 +9,10 @@ uvicorn[standard]~=0.32
 pydantic~=2.9
 supabase~=2.10
 openai~=1.60
+
+# Los artículos se redactan con Claude (`bitacora/articulos/claude.py`), con
+# una clave de la plataforma y no una por persona.
+anthropic~=1.14
 python-dotenv~=1.0
 
 # Texto de los PDF que se adjuntan como material de apoyo de una charla (las

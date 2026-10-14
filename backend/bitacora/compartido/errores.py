@@ -55,6 +55,14 @@ CodigoError = Literal[
     # Material de apoyo: diapositivas y documentos de una charla.
     "MATERIAL_NO_ENCONTRADO",
     "MATERIAL_SIN_TEXTO",
+    # Artículos: enfoques, esquema y redacción con Claude.
+    "ART_SIN_CLAVE",
+    "ART_NO_ENCONTRADO",
+    "ART_PASO_NO_DISPONIBLE",
+    "ART_SIN_PONENCIAS",
+    "ART_MATERIAL_DEMASIADO_GRANDE",
+    "ART_SIN_EVIDENCIAS",
+    "ART_RECHAZADO_POR_EL_MODELO",
     # Agente conversacional sobre el catálogo.
     "CHAT_MENSAJE_VACIO",
     "CHAT_CONVERSACION_NO_ENCONTRADA",
@@ -66,6 +74,28 @@ CodigoError = Literal[
 ]
 
 _MENSAJES: Final[dict[str, str]] = {
+    "ART_SIN_CLAVE": (
+        "La redacción de artículos todavía no está activada en el servidor. "
+        "Pide a la administración que configure la clave de Anthropic."
+    ),
+    "ART_NO_ENCONTRADO": "No encontramos ese artículo entre los tuyos.",
+    "ART_PASO_NO_DISPONIBLE": (
+        "Este artículo ya está en otro paso. Recarga la página para ver en qué va."
+    ),
+    "ART_SIN_PONENCIAS": (
+        "Ninguna de las ponencias elegidas tiene una transcripción que se pueda leer. "
+        "Transcribe al menos una antes de escribir el artículo."
+    ),
+    "ART_MATERIAL_DEMASIADO_GRANDE": (
+        "Las ponencias elegidas suman demasiado texto para un solo artículo. Elige menos y vuelve a intentarlo."
+    ),
+    "ART_SIN_EVIDENCIAS": (
+        "No encontramos en las transcripciones ninguna cita que sostenga este enfoque. "
+        "Prueba con otro enfoque o con una idea más cercana a lo que se dijo."
+    ),
+    "ART_RECHAZADO_POR_EL_MODELO": (
+        "El modelo no quiso trabajar con este material. Prueba con otra idea o con otras ponencias."
+    ),
     "MATERIAL_NO_ENCONTRADO": "No se encontro esa imagen entre el material de apoyo de la conferencia.",
     "MATERIAL_SIN_TEXTO": (
         "No se pudo leer texto en esa imagen. Puede que no tenga texto legible, que pese demasiado "
@@ -194,6 +224,11 @@ _ESTADOS_HTTP: Final[dict[str, int]] = {
     "IA_CUPO_DIARIO_AGOTADO": 429,
     "IA_SIN_RESPUESTA": 503,
     "CONF_NO_ENCONTRADA": 404,
+    "ART_SIN_CLAVE": 503,
+    "ART_NO_ENCONTRADO": 404,
+    "ART_PASO_NO_DISPONIBLE": 409,
+    "ART_SIN_PONENCIAS": 422,
+    "ART_MATERIAL_DEMASIADO_GRANDE": 413,
     "CHAT_CONVERSACION_NO_ENCONTRADA": 404,
     "CHAT_MENSAJE_VACIO": 422,
     "MEM_SIN_HUECOS": 422,

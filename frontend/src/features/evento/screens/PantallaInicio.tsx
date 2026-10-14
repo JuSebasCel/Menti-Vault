@@ -31,7 +31,9 @@ type Solicitud = { id: string; icono: string; titulo: string; detalle: string; r
 function Inicio({ datos }: { datos: DatosDelEvento }): ReactElement {
   const { usuario } = useSession()
   const navegar = useNavigate()
-  const { ponentes, ponencias, memorias, producciones } = datos
+  const { ponentes, ponencias, memorias } = datos
+  /* Solo los terminados: uno a medio hacer no es un artículo que enseñar todavía. */
+  const producciones = datos.producciones.filter((produccion) => produccion.estado === 'lista' || produccion.estado === 'borrador')
 
 
   const dias = useMemo(() => [...new Set(ponencias.map((ponencia) => ponencia.fecha))].sort(), [ponencias])

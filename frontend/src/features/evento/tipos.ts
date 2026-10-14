@@ -118,6 +118,8 @@ export type Evidencia = {
 
 export type Enfoque = {
   readonly titulo: string
+  /** Las claves (P1, P2…) de las ponencias que lo sostienen. Vacío en las producciones de ejemplo. */
+  readonly ponencias?: readonly string[]
   readonly pregunta: string
   readonly tipo: string
   readonly ponentes: number
@@ -127,13 +129,35 @@ export type Enfoque = {
   readonly por_que: string
 }
 
+/*
+  En qué va un artículo. Los de trabajo (`buscando`, `esquematizando`,
+  `redactando`) los hace el modelo en segundo plano y se consultan hasta que
+  cambian; los de espera (`eligiendo`, `esquema`) piden una decisión a quien
+  escribe. `borrador` es el de las producciones de ejemplo, que ya están
+  completas.
+*/
+export type EstadoDeProduccion =
+  | 'borrador'
+  | 'buscando'
+  | 'eligiendo'
+  | 'esquematizando'
+  | 'esquema'
+  | 'redactando'
+  | 'lista'
+  | 'fallida'
+
 export type Produccion = {
   readonly id: string
   readonly titulo: string
   readonly tipo: string
   readonly idea: string
+  readonly estado: EstadoDeProduccion
+  /** Por qué falló el último paso, ya redactado para enseñarse tal cual. */
+  readonly fallo: string
   readonly enfoques: readonly Enfoque[]
-  readonly esquema: readonly { readonly titulo: string; readonly evidencias: readonly string[] }[]
+  /** El enfoque elegido; null mientras no se ha elegido. */
+  readonly enfoque: Enfoque | null
+  readonly esquema: readonly { readonly titulo: string; readonly proposito?: string; readonly evidencias: readonly string[] }[]
   readonly secciones: readonly { readonly titulo: string; readonly texto: string }[]
   readonly evidencias: readonly Evidencia[]
   readonly creadaEl: string

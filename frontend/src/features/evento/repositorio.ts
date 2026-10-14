@@ -125,7 +125,10 @@ function mapearProduccion(fila: Fila): Produccion {
     titulo: texto(fila['titulo']),
     tipo: texto(fila['tipo']),
     idea: texto(fila['idea']),
+    estado: (texto(fila['estado']) || 'borrador') as Produccion['estado'],
+    fallo: texto(fila['fallo']),
     enfoques: (fila['enfoques'] ?? []) as Produccion['enfoques'],
+    enfoque: (fila['enfoque'] ?? null) as Produccion['enfoque'],
     esquema: (fila['esquema'] ?? []) as Produccion['esquema'],
     secciones: (fila['secciones'] ?? []) as Produccion['secciones'],
     evidencias: ((fila['evidencias'] ?? []) as Fila[]).map((evidencia) => ({
@@ -665,5 +668,36 @@ export async function eliminarPublicacion(id: string): Promise<ResultadoDeConsul
 /* Quitar una sesión de la agenda, con todo lo que cuelga de ella. Es de verdad incluso en demostración: borrar es una decisión explícita. */
 export async function eliminarSesion(idConferencia: string): Promise<ResultadoDeConsulta<null>> {
   const { error } = await supabase.from('conferencias').delete().eq('id', idConferencia)
+  return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+}
+
+/*
+  Un artículo nace como fila con la idea, antes de pedir el primer paso: así
+  su tarjeta existe desde el principio y sobrevive a cerrar el modal o la
+  pestaña mientras el modelo trabaja.
+*/
+export async function crearProduccion(idDueno: string, evento: string, idea: string): Promise<ResultadoDeConsulta<string>> {
+  const { data, error } = await supabase
+    .from('producciones')
+    .insert({ id_dueno: idDueno, evento, idea, titulo: idea.slice(0, 120), estado: 'buscando' })
+    .select('id')
+    .single()
+  if (error !== null || data === null) {
+    return { ok: false, codigo: error === null ? 'DATOS_FALLO_INESPERADO' : codigoDeErrorDeSupabase(error) }
+  }
+  return { ok: true, datos: texto((data as Fila)['id']) }
+}
+
+/* Una sola producción, para seguir su avance sin recargar el evento entero cada pocos segundos. */
+export async function leerProduccion(id: string): Promise<ResultadoDeConsulta<Produccion | null>> {
+  const { data, error } = await supabase.from('producciones').select('*').eq('id', id).maybeSingle()
+  if (error !== null) {
+    return { ok: false, codigo: codigoDeErrorDeSupabase(error) }
+  }
+  return { ok: true, datos: data === null ? null : mapearProduccion(data as Fila) }
+}
+
+export async function eliminarProduccion(id: string): Promise<ResultadoDeConsulta<null>> {
+  const { error } = await supabase.from('producciones').delete().eq('id', id)
   return error === null ? { ok: true, datos: null } : { ok: false, codigo: codigoDeErrorDeSupabase(error) }
 }
